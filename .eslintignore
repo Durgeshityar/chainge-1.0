@@ -1,0 +1,10 @@
+.expo
+node_modules
+android
+ios
+web-build
+dist
+build
+coverage
+*.min.js
+*.bundle

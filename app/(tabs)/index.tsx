@@ -1,98 +1,81 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import { router } from 'expo-router';
+import { useRef } from 'react';
+import { StyleSheet, Text } from 'react-native';
 
-import { HelloWave } from '@/components/hello-wave';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Link } from 'expo-router';
+import { useActivityStore } from '@/stores/activityStore';
+
+import { ActivityInitiatorSheet } from '@/components/activity/ActivityInitiatorSheet';
+import { ActivityType } from '@/components/activity/ActivityPicker';
+import { ActivityTrigger } from '@/components/activity/activityTrigger';
+import { StackedActivityCards } from '@/components/activity/stackedActivityCards';
+import { RecentActivityStats } from '@/components/home/RecentActivityStats';
+import { ScreenContainer } from '@/components/layout/ScreenContainer';
+import { BottomSheet, BottomSheetRef } from '@/components/ui/BottomSheet';
 
 export default function HomeScreen() {
-  return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#A1CEDC', dark: '#1D3D47' }}
-      headerImage={
-        <Image
-          source={require('@/assets/images/partial-react-logo.png')}
-          style={styles.reactLogo}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText type="title">Welcome!</ThemedText>
-        <HelloWave />
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 1: Try it</ThemedText>
-        <ThemedText>
-          Edit <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> to see changes.
-          Press{' '}
-          <ThemedText type="defaultSemiBold">
-            {Platform.select({
-              ios: 'cmd + d',
-              android: 'cmd + m',
-              web: 'F12',
-            })}
-          </ThemedText>{' '}
-          to open developer tools.
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <Link href="/modal">
-          <Link.Trigger>
-            <ThemedText type="subtitle">Step 2: Explore</ThemedText>
-          </Link.Trigger>
-          <Link.Preview />
-          <Link.Menu>
-            <Link.MenuAction title="Action" icon="cube" onPress={() => alert('Action pressed')} />
-            <Link.MenuAction
-              title="Share"
-              icon="square.and.arrow.up"
-              onPress={() => alert('Share pressed')}
-            />
-            <Link.Menu title="More" icon="ellipsis">
-              <Link.MenuAction
-                title="Delete"
-                icon="trash"
-                destructive
-                onPress={() => alert('Delete pressed')}
-              />
-            </Link.Menu>
-          </Link.Menu>
-        </Link>
+  const bottomSheetRef = useRef<BottomSheetRef>(null);
+  const setScheduledActivities = useActivityStore((state) => state.setScheduledActivities);
+  const scheduledActivities = useActivityStore((state) => state.scheduledActivities);
 
-        <ThemedText>
-          {`Tap the Explore tab to learn more about what's included in this starter app.`}
-        </ThemedText>
-      </ThemedView>
-      <ThemedView style={styles.stepContainer}>
-        <ThemedText type="subtitle">Step 3: Get a fresh start</ThemedText>
-        <ThemedText>
-          {`When you're ready, run `}
-          <ThemedText type="defaultSemiBold">npm run reset-project</ThemedText> to get a fresh{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> directory. This will move the current{' '}
-          <ThemedText type="defaultSemiBold">app</ThemedText> to{' '}
-          <ThemedText type="defaultSemiBold">app-example</ThemedText>.
-        </ThemedText>
-      </ThemedView>
-    </ParallaxScrollView>
+  const handleOpenActivityTrigger = () => {
+    bottomSheetRef.current?.scrollTo(-580); // Open sheet
+  };
+
+  const handleStartActivity = (type: ActivityType) => {
+    bottomSheetRef.current?.scrollTo(0); // Close sheet
+    // Navigate with activity type param
+    router.push({
+      pathname: '/activity/tracking',
+      params: { activityType: type },
+    });
+  };
+
+  const handleScheduleActivity = (
+    type: ActivityType,
+    details: { date: Date; playground: string; visibility: string },
+  ) => {
+    // Add to store (simplified ID gen)
+    const newActivity: any = {
+      id: Math.random().toString(36).substr(2, 9),
+      activityType: type,
+      status: 'SCHEDULED', // Using string literal matching the enum in store/types if possible
+      scheduledAt: details.date,
+      locationName: details.playground,
+      visibility: details.visibility.toUpperCase(),
+      createdAt: new Date(),
+    };
+
+    // In a real app we'd append to existing, but here we just mock add
+    setScheduledActivities([...scheduledActivities, newActivity]);
+
+    bottomSheetRef.current?.scrollTo(0); // Close sheet
+    alert(`Scheduled ${type} on ${details.date.toLocaleDateString()}`);
+  };
+
+  return (
+    <ScreenContainer style={{ paddingHorizontal: 0 }} safeAreaEdges={['bottom', 'left', 'right']}>
+      <ActivityTrigger handleOpenActivityTrigger={handleOpenActivityTrigger} />
+
+      <RecentActivityStats />
+
+      <Text style={styles.header}>Upcoming Activities</Text>
+      <StackedActivityCards />
+      <BottomSheet ref={bottomSheetRef} snapPoints={['65%']}>
+        <ActivityInitiatorSheet
+          onStartActivity={handleStartActivity}
+          onScheduleActivity={handleScheduleActivity}
+        />
+      </BottomSheet>
+    </ScreenContainer>
   );
 }
 
 const styles = StyleSheet.create({
-  titleContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  stepContainer: {
-    gap: 8,
-    marginBottom: 8,
-  },
-  reactLogo: {
-    height: 178,
-    width: 290,
-    bottom: 0,
-    left: 0,
-    position: 'absolute',
+  header: {
+    color: 'rgba(255,255,255,0.75)',
+    fontSize: 20,
+    fontWeight: '300',
+    marginLeft: 20,
+    letterSpacing: 0.4,
   },
 });
