@@ -244,6 +244,16 @@ export class UserService {
   }
 
   /**
+   * Get suggested users (all users except current user)
+   */
+  async getSuggestedUsers(currentUserId: string, limit: number = 20): Promise<User[]> {
+    const allUsers = await this.database.list('user', {
+      limit: limit + 1,
+    });
+    return allUsers.filter(u => u.id !== currentUserId).slice(0, limit);
+  }
+
+  /**
    * Update user's location
    */
   async updateLocation(userId: string, latitude: number, longitude: number): Promise<User> {

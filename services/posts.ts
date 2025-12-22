@@ -83,6 +83,24 @@ export class PostService {
     };
   }
 
+  async getFeedWithDetails(
+    userId: string,
+    followingIds: string[],
+    limit: number = 10,
+    cursor?: string,
+  ): Promise<{ posts: PostWithDetails[]; nextCursor: string | null }> {
+    const base = await this.getFeedPosts(userId, followingIds, limit, cursor);
+
+    const postsWithRelations = await Promise.all(
+      base.posts.map(async (post) => {
+        const full = await this.getPostWithDetails(post.id);
+        return full ?? { ...post };
+      }),
+    );
+
+    return { posts: postsWithRelations, nextCursor: base.nextCursor };
+  }
+
   /**
    * Get feed posts (from users the current user follows)
    */
@@ -92,12 +110,14 @@ export class PostService {
     limit: number = 20,
     cursor?: string,
   ): Promise<{ posts: Post[]; nextCursor: string | null }> {
-    // Include the user's own posts and posts from followed users
+    // If the user follows no one, fall back to global feed (mock-friendly)
+    const useGlobalFeed = followingIds.length === 0;
+
+    // Include the user's own posts and posts from followed users when available
     const userIds = [userId, ...followingIds];
 
-    // Fetch posts from all these users
     const result = await this.database.paginate('post', {
-      where: [{ field: 'userId', operator: 'in', value: userIds }],
+      where: useGlobalFeed ? undefined : [{ field: 'userId', operator: 'in', value: userIds }],
       orderBy: [{ field: 'createdAt', direction: 'desc' }],
       limit,
       cursor,
@@ -218,6 +238,16 @@ export class PostService {
     return comment;
   }
 
+  async addCommentWithUser(
+    postId: string,
+    userId: string,
+    content: string,
+  ): Promise<PostComment & { user?: User }> {
+    const comment = await this.addComment(postId, userId, content);
+    const user = await this.database.get('user', userId);
+    return { ...comment, user: user ?? undefined };
+  }
+
   /**
    * Delete a comment
    */
@@ -318,6 +348,25 @@ export class PostService {
     const users = await Promise.all(likes.map((like) => this.database.get('user', like.userId)));
 
     return users.filter((u): u is User => u !== null);
+  }
+
+  async toggleLike(postId: string, userId: string): Promise<{ liked: boolean; likeCount: number }> {
+    const hasLiked = await this.hasLiked(postId, userId);
+    if (hasLiked) {
+      await this.unlikePost(postId, userId);
+    } else {
+      await this.likePost(postId, userId);
+    }
+
+    const post = await this.database.get('post', postId);
+    return {
+      liked: !hasLiked,
+      likeCount: post?.likeCount ?? 0,
+    };
+  }
+
+  buildShareLink(postId: string): string {
+    return `https://chainge.app/post/${postId}`;
   }
 }
 

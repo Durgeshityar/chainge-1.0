@@ -624,74 +624,74 @@ This document outlines all implementation tasks for building Chainge from scratc
 
 ### 9.1 Create Chat Store
 
-- [ ] Create `stores/chatStore.ts`
-- [ ] Store `chats` array (sorted by last message)
-- [ ] Store `activeChat` messages
-- [ ] Store `unreadCount` total
-- [ ] Implement subscription management
+- [x] Create `stores/chatStore.ts`
+- [x] Store `chats` array (sorted by last message)
+- [x] Store `activeChat` messages
+- [x] Store `unreadCount` total
+- [x] Implement subscription management
 
 ### 9.2 Create Messaging Components
 
 #### ChatListItem Component
 
-- [ ] Create `components/messaging/ChatListItem.tsx`
-- [ ] Avatar (single for DM, stacked for group)
-- [ ] Chat name (user name or group name)
-- [ ] Last message preview (truncated)
-- [ ] Timestamp
-- [ ] Unread indicator/count
-- [ ] Press to navigate
+- [x] Create `components/messaging/ChatListItem.tsx`
+- [x] Avatar (single for DM, stacked for group)
+- [x] Chat name (user name or group name)
+- [x] Last message preview (truncated)
+- [x] Timestamp
+- [x] Unread indicator/count
+- [x] Press to navigate
 
 #### MessageBubble Component
 
-- [ ] Create `components/messaging/MessageBubble.tsx`
-- [ ] Sent vs received styling (right vs left, different colors)
-- [ ] Message text
-- [ ] Timestamp
-- [ ] Read receipt indicator (optional)
-- [ ] Long press for options (copy, delete)
+- [x] Create `components/messaging/MessageBubble.tsx`
+- [x] Sent vs received styling (right vs left, different colors)
+- [x] Message text
+- [x] Timestamp
+- [x] Read receipt indicator (optional)
+- [x] Long press for options (copy, delete)
 
 #### ChatInput Component
 
-- [ ] Create `components/messaging/ChatInput.tsx`
-- [ ] Text input (multiline, auto-grow)
-- [ ] Send button (enabled when text present)
-- [ ] Attachment button (future: images)
+- [x] Create `components/messaging/ChatInput.tsx`
+- [x] Text input (multiline, auto-grow)
+- [x] Send button (enabled when text present)
+- [x] Attachment button (future: images)
 
 ### 9.3 Create Messages Screen
 
-- [ ] Implement `app/(tabs)/messages.tsx`
-- [ ] Header with "Messages" title + new chat button
-- [ ] Tabs or segments: DMs / Groups / Notifications
-- [ ] Chat list (FlatList)
-- [ ] Empty state per tab
-- [ ] Pull to refresh
+- [x] Implement `app/(tabs)/messages.tsx`
+- [x] Header with "Messages" title + new chat button
+- [x] Tabs or segments: DMs / Groups / Notifications
+- [x] Chat list (FlatList)
+- [x] Empty state per tab
+- [x] Pull to refresh
 
 ### 9.4 Create Chat Thread Screen
 
-- [ ] Create `app/chat/[id].tsx`
-- [ ] Header with chat name, avatar, back button
-- [ ] Messages list (inverted FlatList)
-- [ ] ChatInput at bottom
-- [ ] Keyboard avoiding view
-- [ ] Load more (pagination up)
-- [ ] Real-time message display (from store)
+- [x] Create `app/chat/[id].tsx`
+- [x] Header with chat name, avatar, back button
+- [x] Messages list (inverted FlatList)
+- [x] ChatInput at bottom
+- [x] Keyboard avoiding view
+- [x] Load more (pagination up)
+- [x] Real-time message display (from store)
 
 ### 9.5 Create New Chat Screen
 
-- [ ] Create `app/chat/new.tsx`
-- [ ] Search/select users
-- [ ] For groups: multi-select + group name input
-- [ ] Create chat and navigate to thread
+- [x] Create `app/chat/new.tsx`
+- [x] Search/select users
+- [x] For groups: multi-select + group name input
+- [x] Create chat and navigate to thread
 
 ### 9.6 Create Notifications Screen
 
-- [ ] Create `app/notifications.tsx`
-- [ ] Notification types: join requests, approvals, likes, comments, follows
-- [ ] NotificationItem component
-- [ ] Mark as read on view
-- [ ] Navigate on tap (deep link)
-- [ ] Pull to refresh
+- [x] Create `app/notifications.tsx`
+- [x] Notification types: join requests, approvals, likes, comments, follows
+- [x] NotificationItem component
+- [x] Mark as read on view
+- [x] Navigate on tap (deep link)
+- [x] Pull to refresh
 
 ---
 
@@ -699,10 +699,10 @@ This document outlines all implementation tasks for building Chainge from scratc
 
 ### 10.1 Create Notification Store
 
-- [ ] Create `stores/notificationStore.ts`
-- [ ] Store `notifications` array
-- [ ] Store `unreadCount`
-- [ ] Implement subscription placeholder
+- [x] Create `stores/notificationStore.ts`
+- [x] Store `notifications` array
+- [x] Store `unreadCount`
+- [x] Implement subscription placeholder
 
 ### 10.2 Set Up Push Notifications (Frontend)
 

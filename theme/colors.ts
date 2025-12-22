@@ -8,7 +8,7 @@ export const colors = {
   primary: '#98ff00', // Neon Green
   primaryAlt: '#B4FC57', // Previous Neon Green
   jetBlack: '#000000', // Jet Black
-  
+
   // Background Colors
   background: {
     default: '#1c1c1c', // Background - Deep Charcoal
@@ -18,6 +18,8 @@ export const colors = {
     modal: '#2C2C2E', // Modal/Sheet Background
     darkOlive: '#2accf2', // Dark Olive Background
     subtle: '#2E2E22', // Subtle background
+    charcoal: '#131511',
+    deepGreen: '#0A2312', // Deep Green for gradients
   },
 
   // Text Colors
@@ -81,4 +83,3 @@ export const colors = {
 } as const;
 
 export type Colors = typeof colors;
-

@@ -53,8 +53,5 @@ export const globalStyles = StyleSheet.create({
   },
 });
 
-/**
- * Tab Bar Styles
- * Custom bottom tab navigation bar styling
- */
+
 

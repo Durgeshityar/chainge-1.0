@@ -34,8 +34,13 @@ export const SummaryCard = ({
   backgroundImage,
   themeColor,
 }: SummaryCardProps) => {
+  const isRouteActivity = useMemo(() => {
+    const type = activityType.toLowerCase();
+    return type === 'running' || type === 'cycling';
+  }, [activityType]);
+
   const polylineFromTrack = useMemo(() => {
-    if (!trackPoints.length) return '';
+    if (!trackPoints.length || !isRouteActivity) return '';
 
     const lats = trackPoints.map((point) => point.latitude);
     const lngs = trackPoints.map((point) => point.longitude);
@@ -54,19 +59,33 @@ export const SummaryCard = ({
         return `${normX},${normY}`;
       })
       .join(' ');
-  }, [trackPoints]);
+  }, [trackPoints, isRouteActivity]);
 
   // Use real track if we have enough data (e.g., > 50m and > 5 points)
-  // Otherwise, use the fake loop for visual testing/preview.
+  // Otherwise, use the fake loop for visual testing/preview if it's a route activity.
   const polylinePoints = useMemo(() => {
+    if (!isRouteActivity) return '';
     const hasSignificantData = trackPoints.length > 5 && summary.distanceMeters > 50;
     if (polylineFromTrack && hasSignificantData) return polylineFromTrack;
     return DEFAULT_ROUTE_POINTS;
-  }, [polylineFromTrack, trackPoints.length, summary.distanceMeters]);
+  }, [polylineFromTrack, trackPoints.length, summary.distanceMeters, isRouteActivity]);
 
   // Format helpers
   const distanceKm = (summary.distanceMeters / 1000).toFixed(2);
   const durationMin = (summary.durationMs / 60000).toFixed(2);
+
+  // Duration formatting for non-route activities (H:MM:SS or MM:SS)
+  const formatDuration = (ms: number) => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+
+    if (hours > 0) {
+      return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+    }
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  };
 
   // Pace formatting (min/km)
   const paceTotalMin = (summary.paceSecondsPerKm ?? 0) / 60;
@@ -96,7 +115,7 @@ export const SummaryCard = ({
           />
         )}
 
-        {!!polylinePoints && (
+        {isRouteActivity && !!polylinePoints && (
           <View style={styles.routeOverlay} pointerEvents="none">
             <Svg
               width="100%"
@@ -124,26 +143,31 @@ export const SummaryCard = ({
         </View>
 
         <View style={styles.statsContainer}>
-          <View style={styles.statRow}>
-            <Text style={styles.mainStatValue}>{distanceKm}</Text>
-            <Text style={styles.mainStatUnit}> km</Text>
-          </View>
+          {isRouteActivity ? (
+            <>
+              <View style={styles.statRow}>
+                <Text style={styles.mainStatValue}>{distanceKm}</Text>
+                <Text style={styles.mainStatUnit}> km</Text>
+              </View>
 
-          <View style={styles.secondaryStatsRow}>
-            <View>
-              <Text style={styles.secondaryStatValue}>{durationMin}</Text>
-              <Text style={styles.secondaryStatLabel}>mins</Text>
+              <View style={styles.secondaryStatsRow}>
+                <View>
+                  <Text style={styles.secondaryStatValue}>{durationMin}</Text>
+                  <Text style={styles.secondaryStatLabel}>mins</Text>
+                </View>
+                <View style={styles.statDivider} />
+                <View>
+                  <Text style={styles.secondaryStatValue}>{paceDisplay}</Text>
+                  <Text style={styles.secondaryStatLabel}>avg pace</Text>
+                </View>
+              </View>
+            </>
+          ) : (
+            <View style={styles.statRow}>
+              <Text style={styles.mainStatValue}>{formatDuration(summary.durationMs)}</Text>
+              <Text style={styles.mainStatUnit}> {summary.durationMs >= 3600000 ? 'hrs' : 'mins'}</Text>
             </View>
-            <View style={styles.statDivider} />
-            <View>
-              <Text style={styles.secondaryStatValue}>{paceDisplay}</Text>
-              <Text style={styles.secondaryStatLabel}>avg km/h</Text>
-              {/* Note: User asked for avg km/h in visual, but code has pace. 
-                        Let's check if we should convert pace to speed. 
-                        Pace (sec/km) -> Speed (km/h) = 3600 / Pace 
-                    */}
-            </View>
-          </View>
+          )}
         </View>
 
         {/* Quote/Caption Placeholder (Visual ref shows "Easy miles to close that 70k") */}
@@ -151,6 +175,7 @@ export const SummaryCard = ({
       </View>
     </View>
   );
+
 };
 
 const styles = StyleSheet.create({

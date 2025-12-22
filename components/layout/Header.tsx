@@ -9,17 +9,21 @@ import { ChevronLeftIcon } from 'react-native-heroicons/outline';
 interface HeaderProps {
   title?: string;
   showBack?: boolean;
+  leftElement?: React.ReactNode;
   rightElement?: React.ReactNode;
   transparent?: boolean;
   onBackPress?: () => void;
+  titleStyle?: any; // Simple type for now
 }
 
 export const Header = ({
   title,
   showBack = true,
+  leftElement,
   rightElement,
   transparent = false,
   onBackPress,
+  titleStyle,
 }: HeaderProps) => {
   const router = useRouter();
 
@@ -38,16 +42,18 @@ export const Header = ({
       !transparent && localStyles.default
     ]}>
       <View style={localStyles.left}>
-        {showBack && (
+        {showBack ? (
           <TouchableOpacity onPress={handleBack} style={localStyles.backButton}>
             <ChevronLeftIcon size={24} color={colors.text.primary} />
           </TouchableOpacity>
+        ) : (
+          leftElement
         )}
       </View>
       
-      <View style={localStyles.center}>
+      <View >
         {title && (
-          <Text style={localStyles.title} numberOfLines={1}>
+          <Text style={[localStyles.title, titleStyle]} numberOfLines={1}>
             {title}
           </Text>
         )}
@@ -70,9 +76,8 @@ const localStyles = StyleSheet.create({
     zIndex: 10,
   },
   default: {
-    backgroundColor: colors.background.default,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border.default,
+    backgroundColor: colors.background.black,
+   
   },
   transparent: {
     backgroundColor: 'transparent',
@@ -85,10 +90,7 @@ const localStyles = StyleSheet.create({
     flex: 1,
     alignItems: 'flex-start',
   },
-  center: {
-    flex: 2,
-    alignItems: 'center',
-  },
+
   right: {
     flex: 1,
     alignItems: 'flex-end',

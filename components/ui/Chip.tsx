@@ -1,12 +1,5 @@
 import React from 'react';
-import {
-    StyleSheet,
-    Text,
-    TextStyle,
-    TouchableOpacity,
-    View,
-    ViewStyle,
-} from 'react-native';
+import { StyleSheet, Text, TextStyle, TouchableOpacity, View, ViewStyle } from 'react-native';
 import { colors } from '../../theme/colors';
 import { spacing } from '../../theme/spacing';
 import { typography } from '../../theme/typography';
@@ -19,6 +12,7 @@ interface ChipProps {
   style?: ViewStyle;
   textStyle?: TextStyle;
   disabled?: boolean;
+  size?: 'small' | 'medium';
 }
 
 export const Chip: React.FC<ChipProps> = ({
@@ -29,6 +23,7 @@ export const Chip: React.FC<ChipProps> = ({
   style,
   textStyle,
   disabled = false,
+  size = 'medium',
 }) => {
   const getBackgroundColor = () => {
     if (disabled) return colors.background.input;
@@ -48,6 +43,18 @@ export const Chip: React.FC<ChipProps> = ({
     return colors.border.default;
   };
 
+  const sizeStyles =
+    size === 'small'
+      ? {
+          paddingHorizontal: spacing.sm,
+          paddingVertical: spacing.xs,
+          borderRadius: 14,
+        }
+      : undefined;
+
+  const textPreset =
+    size === 'small' ? typography.presets.labelSmall : typography.presets.bodySmall;
+
   return (
     <TouchableOpacity
       onPress={onPress}
@@ -58,6 +65,7 @@ export const Chip: React.FC<ChipProps> = ({
           backgroundColor: getBackgroundColor(),
           borderColor: getBorderColor(),
         },
+        sizeStyles,
         style,
       ]}
     >
@@ -65,6 +73,7 @@ export const Chip: React.FC<ChipProps> = ({
       <Text
         style={[
           styles.text,
+          textPreset,
           {
             color: getTextColor(),
           },
@@ -91,7 +100,6 @@ const styles = StyleSheet.create({
     marginRight: spacing.xs,
   },
   text: {
-    ...typography.presets.bodySmall,
     fontWeight: '500',
   },
 });

@@ -1,6 +1,28 @@
 // Centralized app-wide constants and enumerations
 // Keep this file small and focused on immutable config (labels, option lists, etc.)
 
+const boxingIcon = require('../assets/sportsIcons/28.png');
+const runningIcon = require('../assets/sportsIcons/51.png');
+const footballIcon = require('../assets/sportsIcons/38.png');
+const basketballIcon = require('../assets/sportsIcons/34.png');
+const badmintonIcon = require('../assets/sportsIcons/35.png');
+const cricketIcon = require('../assets/sportsIcons/29.png');
+const pickleballIcon = require('../assets/sportsIcons/32.png');
+const weightliftingIcon = require('../assets/sportsIcons/44.png');
+const volleyballIcon = require('../assets/sportsIcons/45.png');
+
+export const sportsIcons: Record<string, string> = {
+    boxing: boxingIcon,
+    running: runningIcon,
+    football: footballIcon,
+    basketball: basketballIcon,
+    badminton: badmintonIcon,
+    cricket: cricketIcon,
+    pickleball: pickleballIcon,
+    weightlifting: weightliftingIcon,
+    volleyball: volleyballIcon,
+}
+
 export const ONBOARDING_TOTAL_STEPS = 13;
 export const ONBOARDING_MIN_INTERESTS = 3;
 
@@ -176,3 +198,6 @@ export const CARD_MESH_VARIANTS = {
     shadowColor: '#2A7073', // Matching shadow color
   },
 };
+
+
+

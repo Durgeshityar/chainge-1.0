@@ -11,7 +11,7 @@ import {
 import { colors } from '../../theme/colors';
 import { typography } from '../../theme/typography';
 
-export type AvatarSize = 'sm' | 'md' | 'lg' | 'xl';
+export type AvatarSize = 'sm' | 'md' | 'lg' | 'xl' | number;
 
 interface AvatarProps {
   source?: ImageSourcePropType | string;
@@ -20,6 +20,8 @@ interface AvatarProps {
   isOnline?: boolean;
   onPress?: () => void;
   style?: ViewStyle;
+  borderColor?: string;
+  borderWidth?: number;
 }
 
 export const Avatar: React.FC<AvatarProps> = ({
@@ -29,10 +31,13 @@ export const Avatar: React.FC<AvatarProps> = ({
   isOnline = false,
   onPress,
   style,
+  borderColor,
+  borderWidth,
 }) => {
   const [imageError, setImageError] = useState(false);
 
   const getDimensions = () => {
+    if (typeof size === 'number') return size;
     switch (size) {
       case 'sm':
         return 32;
@@ -48,6 +53,7 @@ export const Avatar: React.FC<AvatarProps> = ({
   };
 
   const getFontSize = () => {
+    if (typeof size === 'number') return size * 0.4;
     switch (size) {
       case 'sm':
         return typography.sizes.xs;
@@ -77,8 +83,7 @@ export const Avatar: React.FC<AvatarProps> = ({
 
   const Container = onPress ? TouchableOpacity : View;
 
-  const imageSource =
-    typeof source === 'string' ? { uri: source } : source;
+  const imageSource = typeof source === 'string' ? { uri: source } : source;
 
   return (
     <Container onPress={onPress} style={[styles.container, style]}>
@@ -90,6 +95,8 @@ export const Avatar: React.FC<AvatarProps> = ({
             height: dimension,
             borderRadius,
             backgroundColor: colors.background.card,
+            borderColor: borderColor ?? colors.border.default,
+            borderWidth: borderWidth ?? 1,
           },
         ]}
       >

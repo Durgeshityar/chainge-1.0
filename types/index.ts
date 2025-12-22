@@ -39,6 +39,10 @@ export enum NotificationType {
   COMMENT = 'COMMENT',
   FOLLOW = 'FOLLOW',
   MESSAGE = 'MESSAGE',
+  // New types for extended UI
+  MATCH = 'MATCH',
+  CONNECTION_REQUEST = 'CONNECTION_REQUEST',
+  EVENT_REMINDER = 'EVENT_REMINDER',
 }
 
 // ==================== BASE TYPES ====================
@@ -166,6 +170,7 @@ export interface Post {
   likeCount: number;
   commentCount: number;
   createdAt: Date;
+  updatedAt?: Date;
 }
 
 export type PostCreateInput = Omit<Post, 'id' | 'createdAt' | 'likeCount' | 'commentCount'> & {
@@ -205,6 +210,7 @@ export interface Chat {
   type: ChatType;
   name: string | null;
   lastMessageId: string | null;
+  isMatched?: boolean; // Optional flag for matched DM styling in mock data
   createdAt: Date;
   updatedAt: Date;
 }
@@ -234,10 +240,13 @@ export interface Message {
   chatId: string;
   senderId: string;
   content: string;
+  mediaUrls?: string[];
   createdAt: Date;
 }
 
-export type MessageCreateInput = Omit<Message, 'id' | 'createdAt'>;
+export type MessageCreateInput = Omit<Message, 'id' | 'createdAt'> & {
+  mediaUrls?: string[];
+};
 
 // ==================== NOTIFICATION ====================
 

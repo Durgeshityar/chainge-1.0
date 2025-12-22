@@ -55,12 +55,28 @@ export function createMockAdapters(config: AdapterConfig = {}): Adapters {
   const storage = new MockStorageAdapter({ delay, persist });
 
   // SEED TEST DATA
-  const { SEED_USERS, SEED_PROFILES, SEED_ACTIVITIES } = require('./mock/initialData');
+  const {
+    SEED_USERS,
+    SEED_PROFILES,
+    SEED_ACTIVITIES,
+    SEED_CHATS,
+    SEED_CHAT_PARTICIPANTS,
+    SEED_MESSAGES,
+    SEED_POSTS,
+    SEED_POST_LIKES,
+    SEED_POST_COMMENTS,
+  } = require('./mock/initialData');
 
   // Seed Auth and DB (safe to run always, it upserts)
   auth.seedUsers(SEED_USERS.map((u: any) => ({ email: u.email, password: u.password, id: u.id })));
   database.seed('user', SEED_PROFILES);
   database.seed('activity', SEED_ACTIVITIES);
+  database.seed('post', SEED_POSTS);
+  database.seed('postLike', SEED_POST_LIKES);
+  database.seed('postComment', SEED_POST_COMMENTS);
+  database.seed('chat', SEED_CHATS);
+  database.seed('chatParticipant', SEED_CHAT_PARTICIPANTS);
+  database.seed('message', SEED_MESSAGES);
 
   // Auto-login only if not persisting (fresh start)
   if (!persist) {

@@ -6,7 +6,7 @@ import { spacing } from '@/theme/spacing';
 import { ActivityTrackingStatus } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const isLiveStatus = (status?: ActivityTrackingStatus | null) =>
@@ -35,10 +35,30 @@ const ActivityTrackingScreen = () => {
     lastKnownLocation,
   } = useActivity();
 
-  // Simple local timer for display refresh
+  // Real-time timer display
   const [displayTime, setDisplayTime] = useState(0);
   const [sessionError, setSessionError] = useState<string | null>(null);
   const [isBootstrapping, setIsBootstrapping] = useState(false);
+
+  // Calculate elapsed time in real-time
+  const calculateElapsedTime = useCallback(() => {
+    if (!currentSession) return 0;
+
+    const now = Date.now();
+    const { startedAt, pausedAt, totalPausedMs, status } = currentSession;
+
+    if (status === ActivityTrackingStatus.PAUSED && pausedAt) {
+      // When paused, show time up to pause point
+      return Math.max(0, pausedAt - startedAt - totalPausedMs);
+    }
+
+    if (status === ActivityTrackingStatus.ACTIVE) {
+      // When active, calculate real-time elapsed
+      return Math.max(0, now - startedAt - totalPausedMs);
+    }
+
+    return 0;
+  }, [currentSession]);
 
   useEffect(() => {
     let cancelled = false;
@@ -73,15 +93,27 @@ const ActivityTrackingScreen = () => {
     };
   }, [beginSession, currentSession?.status, resolvedActivityType]);
 
+  // Update display time every second when active
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>;
+
     if (currentSession?.status === ActivityTrackingStatus.ACTIVE) {
+      // Update immediately
+      setDisplayTime(calculateElapsedTime());
+
+      // Then update every second
       interval = setInterval(() => {
-        setDisplayTime((prev) => prev + 1000);
+        setDisplayTime(calculateElapsedTime());
       }, 1000);
+    } else if (currentSession?.status === ActivityTrackingStatus.PAUSED) {
+      // When paused, show the paused time
+      setDisplayTime(calculateElapsedTime());
     }
-    return () => clearInterval(interval);
-  }, [currentSession?.status]);
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [currentSession?.status, calculateElapsedTime]);
 
   useEffect(() => {
     if (!isLiveStatus(currentSession?.status)) {
@@ -122,9 +154,9 @@ const ActivityTrackingScreen = () => {
     ]);
   };
 
-  const isMapActivity = ['Running', 'Cycling', 'Hike', 'Walking'].includes(resolvedActivityType);
+  const isMapActivity = ['Running', 'Cycling', 'Swimming'].includes(resolvedActivityType);
   const shouldShowPermissionPrompt = locationPermissionStatus === 'denied';
-  const timerValue = elapsedMs || displayTime;
+  const timerValue = displayTime;
   const activeStatus = currentSession?.status;
   const focusPoint = useMemo(() => {
     const latestTrackPoint =

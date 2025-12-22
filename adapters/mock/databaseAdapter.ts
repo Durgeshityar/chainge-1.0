@@ -6,16 +6,16 @@
  */
 
 import type {
-  DatabaseChange,
-  Filter,
-  FilterOperator,
-  IDatabaseAdapter,
-  ModelName,
-  ModelTypeMap,
-  OrderBy,
-  PaginatedResult,
-  PaginationOptions,
-  QueryOptions,
+    DatabaseChange,
+    Filter,
+    FilterOperator,
+    IDatabaseAdapter,
+    ModelName,
+    ModelTypeMap,
+    OrderBy,
+    PaginatedResult,
+    PaginationOptions,
+    QueryOptions,
 } from '../types';
 
 interface MockDatabaseConfig {
@@ -300,7 +300,7 @@ export class MockDatabaseAdapter implements IDatabaseAdapter {
     if (!store) return null;
 
     const record = store.get(id);
-    return record ? (deepClone(record) as unknown as ModelTypeMap[M]) : null;
+    return record ? (this.deserializeRecord(deepClone(record)) as unknown as ModelTypeMap[M]) : null;
   }
 
   async list<M extends ModelName>(model: M, options?: QueryOptions): Promise<ModelTypeMap[M][]> {
@@ -333,7 +333,7 @@ export class MockDatabaseAdapter implements IDatabaseAdapter {
       records = records.slice(0, options.limit);
     }
 
-    return records.map((r) => deepClone(r) as unknown as ModelTypeMap[M]);
+    return records.map((r) => this.deserializeRecord(deepClone(r)) as unknown as ModelTypeMap[M]);
   }
 
   async create<M extends ModelName>(
@@ -361,7 +361,7 @@ export class MockDatabaseAdapter implements IDatabaseAdapter {
     store.set(record.id as string, record);
     this.saveToStorage();
 
-    const result = deepClone(record) as unknown as ModelTypeMap[M];
+    const result = this.deserializeRecord(deepClone(record)) as unknown as ModelTypeMap[M];
     this.emitChange('INSERT', model, result);
 
     return result;
@@ -395,7 +395,7 @@ export class MockDatabaseAdapter implements IDatabaseAdapter {
     store.set(id, record);
     this.saveToStorage();
 
-    const result = deepClone(record) as unknown as ModelTypeMap[M];
+    const result = this.deserializeRecord(deepClone(record)) as unknown as ModelTypeMap[M];
     this.emitChange('UPDATE', model, result, oldRecord as unknown as ModelTypeMap[M]);
 
     return result;
@@ -465,7 +465,7 @@ export class MockDatabaseAdapter implements IDatabaseAdapter {
       records = records.slice(0, options.limit);
     }
 
-    return records.map((r) => deepClone(r) as unknown as ModelTypeMap[M]);
+    return records.map((r) => this.deserializeRecord(deepClone(r)) as unknown as ModelTypeMap[M]);
   }
 
   async paginate<M extends ModelName>(
@@ -504,7 +504,7 @@ export class MockDatabaseAdapter implements IDatabaseAdapter {
     // Get one extra to check if there are more
     const limit = options.limit;
     const hasMore = records.length > limit;
-    const data = records.slice(0, limit).map((r) => deepClone(r) as unknown as ModelTypeMap[M]);
+    const data = records.slice(0, limit).map((r) => this.deserializeRecord(deepClone(r)) as unknown as ModelTypeMap[M]);
 
     const nextCursor =
       hasMore && data.length > 0 ? (data[data.length - 1] as unknown as { id: string }).id : null;

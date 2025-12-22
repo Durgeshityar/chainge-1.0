@@ -1,5 +1,5 @@
 import { AdapterProvider } from '@/adapters/AdapterContext';
-import { useAuthAdapter } from '@/hooks/useAdapter';
+import { useAdapters, useAuthAdapter } from '@/hooks/useAdapter';
 import { useAuthStore } from '@/stores/authStore';
 import { colors } from '@/theme/colors';
 import { PortalProvider } from '@gorhom/portal';
@@ -12,6 +12,8 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 SplashScreen.preventAutoHideAsync();
 
+import { seedMessagingData } from '@/utils/seedMessaging';
+
 /**
  * Auth State Observer
  *
@@ -20,11 +22,15 @@ SplashScreen.preventAutoHideAsync();
  */
 function AuthStateObserver({ children }: { children: React.ReactNode }) {
   const authAdapter = useAuthAdapter();
+  const dbAdapter = useAdapters().database; // Get DB adapter to seed
   const setAuthUser = useAuthStore((state) => state.setAuthUser);
   const initialize = useAuthStore((state) => state.initialize);
   const isInitialized = useAuthStore((state) => state.isInitialized);
 
   useEffect(() => {
+    // Seed data on mount
+    seedMessagingData(dbAdapter);
+
     // Subscribe to auth state changes
     const unsubscribe = authAdapter.onAuthStateChange((user) => {
       setAuthUser(user);
@@ -89,6 +95,9 @@ export default function RootLayout() {
               <Stack.Screen name="settings/notifications" />
               <Stack.Screen name="settings/edit-profile" options={{ presentation: 'modal' }} />
               <Stack.Screen name="settings/location-picker" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="chat/new" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="notifications" />
+              <Stack.Screen name="chat/[id]" />
             </Stack>
           </AuthStateObserver>
         </AdapterProvider>

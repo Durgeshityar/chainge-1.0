@@ -1,6 +1,6 @@
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   FlatList,
   NativeScrollEvent,
@@ -26,61 +26,59 @@ export const WheelPicker: React.FC<WheelPickerProps> = ({
   itemHeight = 50,
 }) => {
   const flatListRef = useRef<FlatList>(null);
-  const isScrolling = useRef(false);
+  const hasMounted = useRef(false);
+  const [internalIndex, setInternalIndex] = useState(() => {
+    const idx = items.indexOf(selectedValue as never);
+    return idx !== -1 ? idx : 0;
+  });
 
+  // Only scroll to position on initial mount
   useEffect(() => {
-    // Only scroll programmatically if the user isn't currently scrolling
-    if (isScrolling.current) return;
+    if (hasMounted.current) return;
+    hasMounted.current = true;
 
     const index = items.indexOf(selectedValue as never);
     if (index !== -1 && flatListRef.current) {
-      try {
-        flatListRef.current.scrollToIndex({
-          index,
-          animated: true, // Animated true serves as a visual confirmation, but can be false if preferred
-          viewPosition: 0.5,
+      setTimeout(() => {
+        flatListRef.current?.scrollToOffset({
+          offset: index * itemHeight,
+          animated: false,
         });
-      } catch (e) {
-        // Ignore scroll errors
-      }
+      }, 100);
     }
-  }, [items, selectedValue]);
+  }, []);
 
-  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-    // Ignore scroll events triggered by programmatic scrollToIndex calls to avoid snapping back
-    if (!isScrolling.current) return;
-
-    const offsetY = event.nativeEvent.contentOffset.y;
+  const getIndexFromOffset = useCallback((offsetY: number) => {
     const index = Math.round(offsetY / itemHeight);
+    return Math.max(0, Math.min(items.length - 1, index));
+  }, [itemHeight, items.length]);
+
+  const handleScrollEnd = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    const index = getIndexFromOffset(offsetY);
+
     if (index >= 0 && index < items.length) {
-      // Only call onValueChange if the value actually changed to avoid spamming
-      if (items[index] !== selectedValue) {
-        onValueChange(items[index]);
-      }
+      setInternalIndex(index);
+      onValueChange(items[index]);
     }
-  };
+  }, [items, onValueChange, getIndexFromOffset]);
 
-  const onScrollBeginDrag = () => {
-    isScrolling.current = true;
-  };
-
-  const onMomentumScrollBegin = () => {
-    isScrolling.current = true;
-  };
-
-  const onMomentumScrollEnd = () => {
-    isScrolling.current = false;
-    // Optional: Re-align to exact center if needed, but snapToInterval handles this mostly
-  };
-
-  const renderItem = ({ item, index }: { item: any; index: number }) => {
-    const isSelected = item === selectedValue;
+  const renderItem = useCallback(({ item, index }: { item: any; index: number }) => {
+    const isSelected = index === internalIndex;
     return (
       <View style={[styles.item, { height: itemHeight }]}>
         <Text style={[styles.text, isSelected && styles.selectedText]}>{item}</Text>
       </View>
     );
-  };
+  }, [internalIndex, itemHeight]);
+
+  const keyExtractor = useCallback((_: any, index: number) => index.toString(), []);
+
+  const getItemLayout = useCallback((_: any, index: number) => ({
+    length: itemHeight,
+    offset: itemHeight * index,
+    index,
+  }), [itemHeight]);
 
   return (
     <View style={[styles.container, { height }]}>
@@ -91,23 +89,23 @@ export const WheelPicker: React.FC<WheelPickerProps> = ({
         ref={flatListRef}
         data={items}
         renderItem={renderItem}
-        keyExtractor={(item, index) => index.toString()}
+        keyExtractor={keyExtractor}
         showsVerticalScrollIndicator={false}
         snapToInterval={itemHeight}
         decelerationRate="fast"
-        onScroll={handleScroll}
-        onMomentumScrollBegin={onMomentumScrollBegin}
         scrollEventThrottle={16}
         contentContainerStyle={{
           paddingVertical: (height - itemHeight) / 2,
         }}
-        getItemLayout={(_, index) => ({
-          length: itemHeight,
-          offset: itemHeight * index,
-          index,
-        })}
-        onScrollBeginDrag={onScrollBeginDrag}
-        onMomentumScrollEnd={onMomentumScrollEnd}
+        getItemLayout={getItemLayout}
+        onMomentumScrollEnd={handleScrollEnd}
+        onScrollEndDrag={(event) => {
+          // Handle case where user scrolls slowly and no momentum
+          const velocity = event.nativeEvent.velocity?.y ?? 0;
+          if (Math.abs(velocity) < 0.5) {
+            handleScrollEnd(event);
+          }
+        }}
       />
     </View>
   );

@@ -60,7 +60,7 @@ export default function HomeScreen() {
 
       <Text style={styles.header}>Upcoming Activities</Text>
       <StackedActivityCards />
-      <BottomSheet ref={bottomSheetRef} snapPoints={['65%']}>
+      <BottomSheet ref={bottomSheetRef} snapPoints={['65%']} backgroundColor="#050505">
         <ActivityInitiatorSheet
           onStartActivity={handleStartActivity}
           onScheduleActivity={handleScheduleActivity}

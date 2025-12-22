@@ -5,11 +5,11 @@ import React, { forwardRef, useCallback, useImperativeHandle, useState } from 'r
 import { Dimensions, StyleSheet, TouchableWithoutFeedback, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
-  runOnJS,
-  useAnimatedReaction,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
+    runOnJS,
+    useAnimatedReaction,
+    useAnimatedStyle,
+    useSharedValue,
+    withSpring,
 } from 'react-native-reanimated';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -19,6 +19,7 @@ interface BottomSheetProps {
   children?: React.ReactNode;
   snapPoints?: string[]; // e.g. ['25%', '50%']
   onClose?: () => void;
+  backgroundColor?: string;
 }
 
 export interface BottomSheetRef {
@@ -27,7 +28,7 @@ export interface BottomSheetRef {
 }
 
 export const BottomSheet = forwardRef<BottomSheetRef, BottomSheetProps>(
-  ({ children, snapPoints = ['50%'], onClose }, ref) => {
+  ({ children, snapPoints = ['50%'], onClose, backgroundColor = colors.background.card }, ref) => {
     const translateY = useSharedValue(0);
     const active = useSharedValue(false);
     const context = useSharedValue({ y: 0 });
@@ -96,7 +97,7 @@ export const BottomSheet = forwardRef<BottomSheetRef, BottomSheetProps>(
             <Animated.View style={[styles.backdrop, rBackdropStyle]} />
           </TouchableWithoutFeedback>
           <GestureDetector gesture={gesture}>
-            <Animated.View style={[styles.bottomSheetContainer, rBottomSheetStyle]}>
+            <Animated.View style={[styles.bottomSheetContainer, rBottomSheetStyle, { backgroundColor }]}>
               <View style={styles.line} />
               {children}
             </Animated.View>
@@ -119,7 +120,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 0,
     right: 0,
-    backgroundColor: colors.background.card,
+    // backgroundColor handled via inline style now to support prop
     top: SCREEN_HEIGHT,
     borderTopLeftRadius: 25,
     borderTopRightRadius: 25,

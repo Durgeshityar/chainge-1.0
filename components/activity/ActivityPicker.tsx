@@ -1,223 +1,275 @@
 import { spacing } from '@/theme/spacing';
-import { useEffect, useRef } from 'react';
-import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useCallback, useEffect } from 'react';
+import { Dimensions, Image, ImageSourcePropType, StyleSheet, Text, View } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
+  cancelAnimation,
   Extrapolation,
   interpolate,
-  useAnimatedScrollHandler,
+  runOnJS,
+  SharedValue,
   useAnimatedStyle,
-  useSharedValue
+  useSharedValue,
+  withSpring,
 } from 'react-native-reanimated';
+import Svg, { Defs, Ellipse, RadialGradient, Stop } from 'react-native-svg';
 
 const { width } = Dimensions.get('window');
-const ITEM_WIDTH = width * 0.35; // Slightly larger than 1/3 for presence
-const SPACING = 10;
-const FULL_ITEM_SIZE = ITEM_WIDTH + SPACING;
-const SPACER_ITEM_SIZE = (width - FULL_ITEM_SIZE) / 2;
+const WHEEL_RADIUS = width * 0.7; // Radius of the semicircle
+const ITEM_SIZE = width * 0.32;
+const ANGLE_PER_ITEM = Math.PI / 5; // 36 degrees between items - more spread for visible curve
+
+// Import icons from constants
+import { sportsIcons } from '@/lib/constants';
 
 export type ActivityType =
   | 'Running'
   | 'Cycling'
-  | 'Walking'
-  | 'Gym'
-  | 'Yoga'
+  | 'Swimming'
+  | 'Football'
   | 'Basketball'
   | 'Tennis'
-  | 'Soccer'
-  | 'Hike';
+  | 'Badminton'
+  | 'Cricket'
+  | 'Pickleball'
+  | 'Weightlifting'
+  | 'Volleyball'
+  | 'Boxing';
 
 interface ActivityOption {
   id: ActivityType;
   label: string;
-  emoji: string;
-  color: string;
+  icon: ImageSourcePropType;
 }
 
-const ACTIVITIES: ActivityOption[] = [
-  { id: 'Running', label: 'Running', emoji: '🏃‍♂️', color: '#FF5F5F' },
-  { id: 'Cycling', label: 'Cycling', emoji: '🚴', color: '#4CAF50' },
-  { id: 'Walking', label: 'Walking', emoji: '🚶', color: '#2196F3' },
-  { id: 'Gym', label: 'Gym', emoji: '💪', color: '#FF9800' },
-  { id: 'Yoga', label: 'Yoga', emoji: '🧘', color: '#9C27B0' },
-  { id: 'Basketball', label: 'Basketball', emoji: '🏀', color: '#FF5722' },
-  { id: 'Tennis', label: 'Tennis', emoji: '🎾', color: '#CDDC39' },
-  { id: 'Soccer', label: 'Soccer', emoji: '⚽', color: '#4CAF50' },
-  { id: 'Hike', label: 'Hike', emoji: '⛰️', color: '#795548' },
-];
-
-// Add spacers for beginning and end
-const DATA = [
-  { key: 'spacer-left' },
-  ...ACTIVITIES,
-  { key: 'spacer-right' },
-];
+const ACTIVITIES: ActivityOption[] = Object.entries(sportsIcons).map(([key, icon]) => {
+  // Capitalize first letter
+  const label = key.charAt(0).toUpperCase() + key.slice(1);
+  return {
+    id: label as ActivityType, // Ensuring type safety might require looser casting or consistent naming
+    label: label,
+    icon: icon as ImageSourcePropType,
+  };
+});
 
 interface ActivityPickerProps {
   selectedActivity: ActivityType | null;
   onSelect: (activity: ActivityType) => void;
 }
 
-const WheelItem = ({ item, index, scrollX, onSelect }: any) => {
-  if (!item.id) {
-    return <View style={{ width: SPACER_ITEM_SIZE }} />;
-  }
+interface WheelItemProps {
+  item: ActivityOption;
+  index: number;
+  currentIndex: SharedValue<number>;
+}
 
-  // Adjust index because of the left spacer
-  const realIndex = index - 1; 
-
+const WheelItem = ({ item, index, currentIndex }: WheelItemProps) => {
   const rStyle = useAnimatedStyle(() => {
-    // Input range is based on the scroll position relative to this item
-    const inputRange = [
-      (realIndex - 1) * FULL_ITEM_SIZE,
-      realIndex * FULL_ITEM_SIZE,
-      (realIndex + 1) * FULL_ITEM_SIZE,
-    ];
+    // Calculate this item's angle on the wheel
+    // offset: how many positions away from center this item is
+    const offset = index - currentIndex.value;
 
+    // Each item is positioned at an angle along the semicircle
+    // angle = 0 means top center, negative = left side, positive = right side
+    const angle = offset * ANGLE_PER_ITEM;
+
+    // Position on semicircle (wheel center is below the visible area)
+    // x = sin(angle) * radius -> horizontal position
+    // y = (1 - cos(angle)) * radius -> vertical position (0 at top, increases downward)
+    const x = Math.sin(angle) * WHEEL_RADIUS;
+    const y = (1 - Math.cos(angle)) * WHEEL_RADIUS * 0.6; // Increased for more visible arc
+
+    // Scale based on position (center = largest)
+    const absOffset = Math.abs(offset);
     const scale = interpolate(
-      scrollX.value,
-      inputRange,
-      [0.7, 1.0, 0.7], // reduced from 1.1 to 1.0 to prevent overflow
+      absOffset,
+      [0, 1, 2, 3],
+      [1, 0.78, 0.6, 0.45],
       Extrapolation.CLAMP
     );
 
+    // Opacity based on position
     const opacity = interpolate(
-        scrollX.value,
-        inputRange,
-        [0.4, 1, 0.4],
-        Extrapolation.CLAMP
-    );
-
-    const rotateY = interpolate(
-        scrollX.value,
-        inputRange,
-        [45, 0, -45], // slight 3D rotation
-        Extrapolation.CLAMP
+      absOffset,
+      [0, 1, 2, 2.5],
+      [1, 0.7, 0.4, 0],
+      Extrapolation.CLAMP
     );
 
     return {
       transform: [
-          { scale }, 
-          { perspective: 1000 }, 
-          { rotateY: `${rotateY}deg` }
+        { translateX: x },
+        { translateY: y },
+        { scale },
       ],
       opacity,
+      zIndex: Math.round(100 - absOffset * 10),
     };
   });
 
   return (
-    <View style={{ width: FULL_ITEM_SIZE }}>
-        <Animated.View style={[styles.cardContainer, rStyle]}>
-            <TouchableOpacity
-                style={[styles.card, { borderColor: item.color }]}
-                onPress={() => onSelect(item.id)}
-                activeOpacity={0.9}
-            >
-                <Text style={styles.emoji}>{item.emoji}</Text>
-                <Text style={[styles.label, { color: item.color }]}>{item.label}</Text>
-            </TouchableOpacity>
-        </Animated.View>
-    </View>
+    <Animated.View style={[styles.itemContainer, rStyle]}>
+      <View style={styles.card}>
+        <Image source={item.icon} style={styles.icon} resizeMode="contain" />
+        <Text style={styles.label}>{item.label}</Text>
+      </View>
+    </Animated.View>
   );
 };
 
 export const ActivityPicker = ({ selectedActivity, onSelect }: ActivityPickerProps) => {
-  const scrollX = useSharedValue(0);
-  const flatListRef = useRef<Animated.FlatList<any>>(null);
+  const currentIndex = useSharedValue(0);
+  const startIndex = useSharedValue(0);
 
-  // Auto-select on mount if specific prop passed, otherwise default to first?
-  // User wanted "auto auto selected". We'll default to index 0 (Running).
-  useEffect(() => {
-     if (!selectedActivity) {
-         onSelect(ACTIVITIES[0].id);
-     }
-  }, []);
+  const snapToIndex = useCallback((targetIndex: number) => {
+    'worklet';
+    const clampedIndex = Math.max(0, Math.min(ACTIVITIES.length - 1, Math.round(targetIndex)));
 
-  const onScroll = useAnimatedScrollHandler((event) => {
-    scrollX.value = event.contentOffset.x;
-  });
+    currentIndex.value = withSpring(clampedIndex, {
+      damping: 18,
+      stiffness: 250,
+      mass: 0.6,
+    });
 
-  const handleMomentumScrollEnd = (event: any) => {
-      const offsetX = event.nativeEvent.contentOffset.x;
-      const index = Math.round(offsetX / FULL_ITEM_SIZE);
-      const clampedIndex = Math.min(Math.max(index, 0), ACTIVITIES.length - 1);
-      
-      const selected = ACTIVITIES[clampedIndex];
-      if (selected && selected.id !== selectedActivity) {
-          onSelect(selected.id); // Triggers state update in parent
+    runOnJS(onSelect)(ACTIVITIES[clampedIndex].id);
+  }, [onSelect]);
+
+  const panGesture = Gesture.Pan()
+    .onStart(() => {
+      cancelAnimation(currentIndex);
+      startIndex.value = currentIndex.value;
+    })
+    .onUpdate((event) => {
+      // Convert horizontal pan to index change
+      // Map pan distance to rotation around the wheel
+      const sensitivity = 0.006;
+      const indexDelta = -event.translationX * sensitivity;
+      const newIndex = startIndex.value + indexDelta;
+
+      // Rubber band effect at edges
+      const minIndex = 0;
+      const maxIndex = ACTIVITIES.length - 1;
+
+      if (newIndex < minIndex) {
+        currentIndex.value = minIndex + (newIndex - minIndex) * 0.2;
+      } else if (newIndex > maxIndex) {
+        currentIndex.value = maxIndex + (newIndex - maxIndex) * 0.2;
+      } else {
+        currentIndex.value = newIndex;
       }
-  };
+    })
+    .onEnd((event) => {
+      const velocityFactor = -event.velocityX * 0.00025;
+      const projectedIndex = currentIndex.value + velocityFactor;
+      snapToIndex(projectedIndex);
+    });
+
+  // Initialize
+  useEffect(() => {
+    const initialIndex = selectedActivity
+      ? ACTIVITIES.findIndex(a => a.id === selectedActivity)
+      : 0;
+
+    if (initialIndex !== -1) {
+      currentIndex.value = initialIndex;
+      if (!selectedActivity) {
+        onSelect(ACTIVITIES[0].id);
+      }
+    }
+  }, []);
 
   return (
     <View style={styles.container}>
-      <Animated.FlatList
-        ref={flatListRef}
-        data={DATA}
-        keyExtractor={(item: any) => item.id || item.key}
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        snapToInterval={FULL_ITEM_SIZE}
-        decelerationRate="fast"
-        bounces={false}
-        onScroll={onScroll}
-        scrollEventThrottle={16}
-        renderItem={({ item, index }) => (
-            <WheelItem 
-                item={item} 
-                index={index} 
-                scrollX={scrollX} 
-                onSelect={(id: ActivityType) => {
-                    // Start animation to scroll to this item if tapped
-                    const targetIndex = ACTIVITIES.findIndex(a => a.id === id);
-                    if (targetIndex !== -1 && flatListRef.current) {
-                        flatListRef.current.scrollToOffset({
-                            offset: targetIndex * FULL_ITEM_SIZE,
-                            animated: true
-                        });
-                        onSelect(id);
-                    }
-                }}
+      {/* 3D semicircular platform at bottom */}
+      {/* 3D semicircular platform (Shadow/Pedestal) */}
+      <View style={styles.platformContainer}>
+        <Svg height="100%" width="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+          <Defs>
+            <RadialGradient
+              id="grad"
+              cx="50%"
+              cy="50%"
+              rx="50%"
+              ry="50%"
+              fx="50%"
+              fy="50%"
+            >
+              <Stop offset="0%" stopColor="#4A4A4A" stopOpacity="0.7" />
+              <Stop offset="30%" stopColor="#2A2A2A" stopOpacity="0.5" />
+              <Stop offset="70%" stopColor="#121212" stopOpacity="0.2" />
+              <Stop offset="100%" stopColor="#050505" stopOpacity="0" />
+            </RadialGradient>
+          </Defs>
+          {/* Main soft shadow/pedestal */}
+          <Ellipse cx="50" cy="50" rx="48" ry="32" fill="url(#grad)" />
+          {/* Inner core for depth */}
+          <Ellipse cx="50" cy="50" rx="35" ry="20" fill="url(#grad)" opacity={0.6} />
+        </Svg>
+      </View>
+
+      {/* Wheel items */}
+      <GestureDetector gesture={panGesture}>
+        <Animated.View style={styles.wheelContainer}>
+          {ACTIVITIES.map((item, index) => (
+            <WheelItem
+              key={item.id}
+              item={item}
+              index={index}
+              currentIndex={currentIndex}
             />
-        )}
-        onMomentumScrollEnd={handleMomentumScrollEnd}
-      />
+          ))}
+        </Animated.View>
+      </GestureDetector>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    marginTop: spacing.lg,
-    height: 200,
-    justifyContent: 'center',
+    marginTop: spacing.md,
+    height: 300,
+    justifyContent: 'flex-start',
     alignItems: 'center',
-    overflow: 'visible',
+    overflow: 'hidden',
   },
-  cardContainer: {
-     alignItems: 'center',
-     justifyContent: 'center',
+  wheelContainer: {
+    width: '100%',
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  itemContainer: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   card: {
-    width: ITEM_WIDTH,
-    height: ITEM_WIDTH * 1.2,
-    backgroundColor: '#1E1E1E',
+    width: ITEM_SIZE,
+    height: ITEM_SIZE * 1.15,
+    backgroundColor: 'transparent',
     borderRadius: 24,
-    borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
     padding: spacing.sm,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 8,
   },
-  emoji: {
-    fontSize: 48,
-    marginBottom: spacing.xs,
+  icon: {
+    width: ITEM_SIZE * 0.9, // Increased size
+    height: ITEM_SIZE * 0.9, // Increased size
   },
   label: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: '600',
+    color: '#FFFFFF',
     textAlign: 'center',
+    marginTop: spacing.sm,
+  },
+  platformContainer: {
+    position: 'absolute',
+    bottom: 25,
+    width: width * 0.45, // Reduced from 0.8
+    height: 70, // Reduced from 120
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: -1,
   },
 });
