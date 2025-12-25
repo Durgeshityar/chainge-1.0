@@ -1,7 +1,7 @@
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { ActivityCard } from '@/components/activity/activityCard';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
@@ -10,9 +10,11 @@ import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { WingmanCard } from '@/components/profile/WingmanCard';
 import { WingmanSheet } from '@/components/profile/WingmanSheet';
 import { BottomSheet, BottomSheetRef } from '@/components/ui/BottomSheet';
+import { Button } from '@/components/ui/Button';
 
 import { ActivityType } from '@/components/activity/ActivityPicker';
 import { ActivityScheduler } from '@/components/activity/ActivityScheduler';
+import { useAuth } from '@/hooks/useAuth';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -29,8 +31,9 @@ const MOCK_EVENTS = [
 ];
 
 export default function ProfileScreen() {
-  const { fetchProfile, fetchPosts, isLoading, stats, user } = useProfile();
+  const { fetchProfile, fetchPosts, isLoading: isProfileLoading, stats, user } = useProfile();
   const { authUser, isInitialized } = useAuthStore();
+  const { signOut, isLoading: isAuthLoading } = useAuth();
   const bottomSheetRef = useRef<BottomSheetRef>(null);
   const [activeTab, setActiveTab] = useState<'posts' | 'events'>('posts');
   
@@ -63,12 +66,27 @@ export default function ProfileScreen() {
     bottomSheetRef.current?.scrollTo(-500); // Adjust snap point as needed
   };
 
+  const confirmStrictLogout = (): void => {
+    Alert.alert('Sign out', 'This will end your current session immediately.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Sign out', style: 'destructive', onPress: () => void signOut() },
+    ]);
+  };
+
   return (
     <ScreenContainer style={{ paddingHorizontal: 0 }} safeAreaEdges={['bottom', 'left', 'right']}>
       <ScrollView
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
         refreshControl={
-          <RefreshControl refreshing={isLoading} onRefresh={() => { fetchProfile(); fetchPosts(); }} tintColor={colors.primary} />
+          <RefreshControl
+            refreshing={isProfileLoading}
+            onRefresh={() => {
+              fetchProfile();
+              fetchPosts();
+            }}
+            tintColor={colors.primary}
+          />
         }
         stickyHeaderIndices={[2]} // Stick the tabs to the top when scrolling
       >
@@ -122,6 +140,16 @@ export default function ProfileScreen() {
             )}
         </View>
 
+        <View style={styles.logoutContainer}>
+          <Button
+            title="Log Out"
+            variant="danger"
+            size="lg"
+            isLoading={isAuthLoading}
+            onPress={confirmStrictLogout}
+            style={styles.logoutButton}
+          />
+        </View>
       </ScrollView>
 
       <LinearGradient
@@ -204,6 +232,17 @@ const styles = StyleSheet.create({
     eventItemWrapper: {
         height: 180, // Fixed height for visual consistency with ActivityCard design
     },
+    scrollContent: {
+        paddingBottom: spacing.massive,
+    },
+    logoutContainer: {
+        paddingHorizontal: spacing.lg,
+        paddingBottom: spacing.massive,
+        paddingTop: spacing.md,
+    },
+    logoutButton: {
+        borderRadius: 28,
+    },
     bottomGradient: {
         position: 'absolute',
         bottom: 0,
@@ -213,4 +252,3 @@ const styles = StyleSheet.create({
         zIndex: 1,
     }
 });
-

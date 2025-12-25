@@ -17,7 +17,17 @@ const TABLE_NAME_MAP: Record<ModelName, string> = {
 /**
  * Map a model to its Supabase table name.
  */
-export const getTableName = (model: ModelName): string => TABLE_NAME_MAP[model];
+export const getTableName = (model: ModelName): string => {
+  const envKey = `EXPO_PUBLIC_SUPABASE_TABLE_${toEnvSuffix(model)}`;
+  const override = process.env[envKey];
+  return override?.trim() || TABLE_NAME_MAP[model];
+};
+
+const toEnvSuffix = (model: string): string =>
+  model
+    .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
+    .replace(/-/g, '_')
+    .toUpperCase();
 
 const DATE_KEY_REGEX = /(At|Date)$/;
 

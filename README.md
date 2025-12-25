@@ -60,6 +60,9 @@ export EXPO_PUBLIC_SUPABASE_ANON_KEY="YOUR_ANON_KEY"
 export EXPO_PUBLIC_SUPABASE_REDIRECT_URL="chainge://auth-callback"
 # Optional: switch between the Supabase backend and the local mock backend
 export EXPO_PUBLIC_BACKEND_PROVIDER="supabase" # or "mock"
+# Optional: override Supabase table names if your schema doesn't follow the defaults
+# For example, if your profiles table is named `profiles` instead of `users`
+# export EXPO_PUBLIC_SUPABASE_TABLE_USER="profiles"
 ```
 
 The Expo config already declares the `chainge` scheme; update it if you change the redirect URL. The Supabase auth, database, storage, and realtime adapters are now wired into the `AdapterProvider`, so setting `EXPO_PUBLIC_BACKEND_PROVIDER` to `supabase` (the default) will use your Supabase project. Set it to `mock` if you need the seeded in-memory backend for local development.
