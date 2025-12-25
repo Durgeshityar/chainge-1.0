@@ -27,6 +27,7 @@ export default function InterestsScreen() {
       totalSteps={ONBOARDING_TOTAL_STEPS}
       onNext={handleNext}
       nextDisabled={interests.length < ONBOARDING_MIN_INTERESTS}
+      scrollable={false}
     >
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {ONBOARDING_INTEREST_CATEGORIES.map((category) => (

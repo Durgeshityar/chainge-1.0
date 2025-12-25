@@ -61,6 +61,7 @@ export default function HeightScreen() {
       currentStep={5}
       totalSteps={ONBOARDING_TOTAL_STEPS}
       onNext={handleNext}
+      scrollable={false}
     >
       <View style={styles.container}>
         <View style={styles.unitToggle}>

@@ -35,6 +35,7 @@ export default function LocationScreen() {
       onSkip={handleSkip}
       nextLabel="Confirm Location"
       nextDisabled={!selectedLocation}
+      scrollable={false}
     >
       <View style={styles.container}>
         <View style={styles.mapContainer}>

@@ -40,6 +40,7 @@ export default function PreviewScreen() {
       onNext={handleNext}
       nextLabel="Start"
       showSkip={false}
+      scrollable={false}
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
