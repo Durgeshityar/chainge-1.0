@@ -56,25 +56,39 @@ export type OnboardingInterestCategory = {
 
 export const ONBOARDING_INTEREST_CATEGORIES: OnboardingInterestCategory[] = [
   {
-    title: 'Sports',
+    title: 'Popular Sports',
+    items: [
+      'Football',
+      'Cricket',
+      'Basketball',
+      'Tennis',
+      'Badminton',
+      'Volleyball',
+      'Table Tennis',
+      'Boxing',
+    ],
+  },
+  {
+    title: 'Athletics & Fitness',
     items: [
       'Running',
       'Cycling',
       'Swimming',
-      'Football',
-      'Basketball',
-      'Tennis',
-      'Badminton',
-      'Cricket',
+      'Gym',
+      'Yoga',
+      'Crossfit',
+      'Weightlifting',
     ],
   },
   {
-    title: 'Fitness',
-    items: ['Gym', 'Yoga', 'Pilates', 'Crossfit', 'Calisthenics', 'Zumba', 'Dance'],
-  },
-  {
     title: 'Outdoors',
-    items: ['Hiking', 'Trekking', 'Camping', 'Rock Climbing', 'Surfing', 'Skating'],
+    items: [
+      'Hiking',
+      'Trekking',
+      'Rock Climbing',
+      'Surfing',
+      'Skating',
+    ],
   },
 ];
 

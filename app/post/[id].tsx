@@ -8,16 +8,16 @@ import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
 import { PostWithDetails } from '@/types';
-import { Stack, useLocalSearchParams } from 'expo-router';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 
 const toFeedPost = (post: PostWithDetails, currentUserId: string): FeedPost => ({
@@ -28,6 +28,7 @@ const toFeedPost = (post: PostWithDetails, currentUserId: string): FeedPost => (
 });
 
 export default function PostDetailScreen() {
+  const router = useRouter();
   const { id } = useLocalSearchParams<{ id: string }>();
   const { database, storage } = useAdapters();
   const { user } = useAuth();
@@ -93,6 +94,13 @@ export default function PostDetailScreen() {
           onCommentPress={() => undefined}
           onSharePress={() => undefined}
           onToggleMute={(p) => setPost({ ...p, muted: !p.muted })}
+          onUserPress={(userId) => {
+            if (userId === user?.id) {
+              router.push('/(tabs)/profile');
+            } else {
+              router.push(`/user/${userId}`);
+            }
+          }}
         />
 
         <View style={styles.commentsHeader}>

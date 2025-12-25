@@ -9,6 +9,8 @@ import { FeedPost, useFeedStore } from '@/stores/feedStore';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
+import { useAudioPlayer } from 'expo-audio';
+import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
@@ -16,6 +18,7 @@ const HERO_HEIGHT = 520;
 const COMPACT_HEIGHT = 300;
 
 export default function FeedScreen() {
+  const router = useRouter();
   const { database, storage } = useAdapters();
   const { user, isReady } = useAuth();
   const service = useMemo(() => createPostService(database, storage), [database, storage]);
@@ -23,7 +26,7 @@ export default function FeedScreen() {
   const commentSheetRef = useRef<CommentSheetHandle>(null);
   const shareSheetRef = useRef<ShareSheetHandle>(null);
 
-  const [activePost, setActivePost] = useState<FeedPost | null>(null);
+  const [activePostId, setActivePostId] = useState<string | null>(null);
 
   const {
     posts,
@@ -40,6 +43,17 @@ export default function FeedScreen() {
   } = useFeedStore();
 
   const [isRefreshingComments, setIsRefreshingComments] = useState(false);
+  const [playingPostId, setPlayingPostId] = useState<string | null>(null);
+
+  // Mock audio URL for feed posts (using Pixabay free music)
+  const MOCK_FEED_AUDIO = 'https://cdn.pixabay.com/audio/2022/05/27/audio_1808fbf07a.mp3';
+  const player = useAudioPlayer({ uri: MOCK_FEED_AUDIO });
+
+  // Derive activePost from store to stay reactive
+  const activePost = useMemo(
+    () => posts.find((p) => p.id === activePostId) ?? null,
+    [posts, activePostId]
+  );
 
   useEffect(() => {
     if (isReady && user?.id) {
@@ -67,12 +81,12 @@ export default function FeedScreen() {
   };
 
   const openComments = (post: FeedPost) => {
-    setActivePost(post);
+    setActivePostId(post.id);
     commentSheetRef.current?.open();
   };
 
   const openShare = (post: FeedPost) => {
-    setActivePost(post);
+    setActivePostId(post.id);
     shareSheetRef.current?.open();
   };
 
@@ -88,14 +102,39 @@ export default function FeedScreen() {
     setIsRefreshingComments(false);
   };
 
+  const handleToggleMute = (post: FeedPost) => {
+    const newMuted = !post.muted;
+    setMuted(post.id, newMuted);
+    
+    if (!newMuted) {
+      // Unmuted - play music
+      setPlayingPostId(post.id);
+      player.seekTo(0);
+      player.play();
+    } else {
+      // Muted - pause music
+      if (playingPostId === post.id) {
+        player.pause();
+        setPlayingPostId(null);
+      }
+    }
+  };
+
   const renderItem = ({ item }: { item: FeedPost }) => (
     <PostCard
       post={item}
-      onPress={() => setActivePost(item)}
+      onPress={() => setActivePostId(item.id)}
       onLikeToggle={handleLikeToggle}
       onCommentPress={openComments}
       onSharePress={openShare}
-      onToggleMute={(p) => setMuted(p.id, !p.muted)}
+      onToggleMute={handleToggleMute}
+      onUserPress={(userId) => {
+        if (userId === user?.id) {
+          router.push('/(tabs)/profile');
+        } else {
+          router.push(`/user/${userId}`);
+        }
+      }}
     />
   );
 
@@ -142,12 +181,11 @@ export default function FeedScreen() {
 
       <CommentSheet
         ref={commentSheetRef}
-        postTitle={activePost?.caption ?? 'Comments'}
         comments={activePost?.comments ?? []}
         onSend={handleSendComment}
         onRefresh={handleRefreshComments}
         isRefreshing={isRefreshingComments}
-        onClose={() => setActivePost(null)}
+        onClose={() => setActivePostId(null)}
       />
 
       <ShareSheet
@@ -155,7 +193,7 @@ export default function FeedScreen() {
         shareUrl={activePost ? service.buildShareLink(activePost.id) : undefined}
         onCopy={() => undefined}
         onShareToChat={() => undefined}
-        onClose={() => setActivePost(null)}
+        onClose={() => setActivePostId(null)}
       />
     </ScreenContainer>
   );

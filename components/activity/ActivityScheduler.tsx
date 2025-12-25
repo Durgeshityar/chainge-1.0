@@ -23,18 +23,24 @@ interface ActivitySchedulerProps {
   onSchedule: (details: {
     date: Date;
     playground: string;
-    visibility: 'Public' | 'Private'; // Simplified as requested: Everyone (Public) / Only Me (Private)
+    visibility: 'Public' | 'Private';
   }) => void;
+  initialDate?: Date;
+  initialPlayground?: string;
+  initialVisibility?: 'Public' | 'Private';
 }
 
 export const ActivityScheduler = ({
   activityType,
   onBack,
   onSchedule,
+  initialDate,
+  initialPlayground,
+  initialVisibility,
 }: ActivitySchedulerProps) => {
-  const [date, setDate] = useState(new Date(Date.now() + 86400000));
-  const [playground, setPlayground] = useState('Select Playground');
-  const [visibility, setVisibility] = useState<'Public' | 'Private'>('Private');
+  const [date, setDate] = useState(initialDate || new Date(Date.now() + 86400000));
+  const [playground, setPlayground] = useState(initialPlayground || 'Select Playground');
+  const [visibility, setVisibility] = useState<'Public' | 'Private'>(initialVisibility || 'Private');
   const [activeModal, setActiveModal] = useState<'date' | 'time' | 'playground' | 'visibility' | null>(null);
 
   // Search state for playground
@@ -210,7 +216,7 @@ export const ActivityScheduler = ({
 
         <View style={styles.footer}>
           <Button
-            title="Schedule"
+            title={initialDate ? "Update Activity" : "Schedule Activity"}
             onPress={() => onSchedule({ date, playground, visibility })}
           />
         </View>

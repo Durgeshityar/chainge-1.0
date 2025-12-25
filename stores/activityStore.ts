@@ -1,11 +1,11 @@
 import { accumulateDistanceMeters, calculatePaceSecondsPerKm } from '@/lib/geo';
 import {
-  Activity,
-  ActivitySession,
-  ActivitySessionMeta,
-  ActivitySummary,
-  ActivityTrackingStatus,
-  TrackPoint,
+    Activity,
+    ActivitySession,
+    ActivitySessionMeta,
+    ActivitySummary,
+    ActivityTrackingStatus,
+    TrackPoint,
 } from '@/types';
 import { create } from 'zustand';
 
@@ -17,6 +17,15 @@ interface ActivityStoreState {
   elapsedMs: number;
   averagePace: number | null;
   lastSummary: ActivitySummary | null;
+  tempMusicSelection: {
+     id: string; 
+     title: string; 
+     artist: string; 
+     coverUrl: string; 
+     duration: number; 
+     startTime: number; 
+     endTime: number; 
+  } | null;
 }
 
 interface ActivityStoreActions {
@@ -27,6 +36,7 @@ interface ActivityStoreActions {
   addTrackPoint: (point: TrackPoint) => void;
   stopActivity: () => ActivitySummary | null;
   resetActivity: () => void;
+  setMusicSelection: (selection: ActivityStoreState['tempMusicSelection']) => void;
 }
 
 type ActivityStore = ActivityStoreState & ActivityStoreActions;
@@ -39,6 +49,7 @@ const initialState: ActivityStoreState = {
   elapsedMs: 0,
   averagePace: null,
   lastSummary: null,
+  tempMusicSelection: null,
 };
 
 const makeSessionId = (): string => Math.random().toString(36).slice(2);
@@ -177,7 +188,10 @@ export const useActivityStore = create<ActivityStore>((set) => ({
     set((state) => ({
       ...initialState,
       scheduledActivities: state.scheduledActivities,
+      tempMusicSelection: null,
     })),
+
+  setMusicSelection: (selection) => set({ tempMusicSelection: selection }),
 }));
 
 /**

@@ -1,6 +1,6 @@
 import { Header } from '@/components/layout/Header';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
-import { SettingsRow } from '@/components/settings/SettingsRow';
+import { SettingsRow, SettingsSection } from '@/components/settings/SettingsRow';
 import { useAuth } from '@/hooks/useAuth';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
@@ -11,16 +11,12 @@ import { Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'rea
 import {
   ArrowRightOnRectangleIcon,
   BellIcon,
-  DocumentTextIcon,
+  Cog6ToothIcon,
   HashtagIcon,
-  LockClosedIcon,
-  UserIcon
+  MapPinIcon,
+  ShieldCheckIcon,
 } from 'react-native-heroicons/outline';
-
-// Mock icons for navigation items (can be replaced with actual SVG/Icon components later)
-const SettingsIcon = ({ children }: { children: React.ReactNode }) => (
-    <View>{children}</View>
-);
+import { ChevronRightIcon } from 'react-native-heroicons/solid';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -30,81 +26,102 @@ export default function SettingsScreen() {
     <ScreenContainer keyboardAvoiding={false}>
       <Header title="Settings" showBack />
 
-      <ScrollView contentContainerStyle={styles.content}>
-        {/* Profile Card */}
-        <TouchableOpacity 
-            style={styles.profileCard} 
-            onPress={() => router.push('/settings/edit-profile')}
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Profile Card - Apple Style */}
+        <TouchableOpacity
+          style={styles.profileCard}
+          onPress={() => router.push('/settings/edit-profile')}
+          activeOpacity={0.7}
         >
           <View style={styles.profileRow}>
             {user?.avatarUrl ? (
-                <Image source={{ uri: user.avatarUrl }} style={styles.avatar} />
+              <Image source={{ uri: user.avatarUrl }} style={styles.avatar} />
             ) : (
-                <View style={styles.avatarPlaceholder}>
-                    <Text style={styles.avatarInitials}>{user?.name?.[0] || 'U'}</Text>
-                </View>
+              <View style={styles.avatarPlaceholder}>
+                <Text style={styles.avatarInitials}>{user?.name?.[0] || 'U'}</Text>
+              </View>
             )}
             <View style={styles.profileInfo}>
-              <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Text style={styles.profileName}>{user?.name || 'User'}</Text>
-                  {/* Verified Badge Mock */}
-                  <View style={[styles.verifiedBadge, { backgroundColor: '#3b82f6' }]}>
-                      <Text style={{ fontSize: 8, color: 'white' }}>✓</Text>
-                  </View>
+              <View style={styles.nameRow}>
+                <Text style={styles.profileName}>{user?.name || 'User'}</Text>
+                <View style={styles.verifiedBadge}>
+                  <Text style={styles.verifiedCheck}>✓</Text>
+                </View>
               </View>
               <Text style={styles.profileHandle}>@{user?.username || 'username'}</Text>
+              <Text style={styles.profileSubtext}>
+                Manage your personal information
+              </Text>
             </View>
+            <ChevronRightIcon size={20} color={colors.text.tertiary} />
           </View>
-          <Text style={styles.profileFooter}>
-            Email & Password, Profile Photo, Verification etc
-          </Text>
         </TouchableOpacity>
 
-        {/* Settings List */}
-        <View style={styles.section}>
-            <SettingsRow
-                icon={<LockClosedIcon size={20} color={colors.text.primary} />}
-                title="Privacy & Safety"
-                subtitle="Location & Privacy, Profile Visibility, Blocked..."
-                onPress={() => {}} // TODO: Privacy Screen
-            />
-            <SettingsRow
-                icon={<BellIcon size={20} color={colors.text.primary} />}
-                title="Notifications"
-                subtitle="Activity Updates, Messages, Social Interac..."
-                onPress={() => router.push('/settings/notifications')}
-            />
-            <SettingsRow
-                icon={<DocumentTextIcon size={20} color={colors.text.primary} />}
-                title="Discovery Preferences"
-                subtitle="Activity Types, Distance Range, Time Availa..."
-                onPress={() => {}} // TODO: Discovery Screen
-            />
-            <SettingsRow
-                icon={<HashtagIcon size={20} color={colors.text.primary} />}
-                title="Content sharing"
-                subtitle="Default Post Privacy, Tagging permissions,..."
-                onPress={() => {}} // TODO: Content Screen
-            />
-             <SettingsRow
-                icon={<UserIcon size={20} color={colors.text.primary} />}
-                title="Activity Tracking"
-                subtitle="GPS Settings, Units, Auto-Pause"
-                onPress={() => {}} // TODO: Activity Screen
-            />
-        </View>
+        {/* Privacy & Notifications Section */}
+        <SettingsSection>
+          <SettingsRow
+            icon={<ShieldCheckIcon size={18} color="#fff" />}
+            iconBgColor="#007AFF"
+            title="Privacy & Safety"
+            subtitle="Location, Profile Visibility, Blocked Users"
+            onPress={() => router.push('/settings/privacy')}
+          />
+          <SettingsRow
+            icon={<BellIcon size={18} color="#fff" />}
+            iconBgColor="#FF3B30"
+            title="Notifications"
+            subtitle="Activity Updates, Messages, Social"
+            onPress={() => router.push('/settings/notifications')}
+            showDivider={false}
+          />
+        </SettingsSection>
 
-        {/* Bottom Actions */}
-        <View style={styles.footer}>
-             <SettingsRow
-                icon={<ArrowRightOnRectangleIcon size={20} color="#EF4444" />}
-                title="Log Out"
-                subtitle=""
-                onPress={() => {
-                    // TODO: Implement Logout
-                }}
-                isDestructive
-            />
+        {/* Discovery & Content Section */}
+        <SettingsSection header="Preferences">
+          <SettingsRow
+            icon={<MapPinIcon size={18} color="#fff" />}
+            iconBgColor="#34C759"
+            title="Discovery Preferences"
+            subtitle="Activity Types, Distance, Availability"
+            onPress={() => {}}
+          />
+          <SettingsRow
+            icon={<HashtagIcon size={18} color="#fff" />}
+            iconBgColor="#FF9500"
+            title="Content Sharing"
+            subtitle="Post Privacy, Tagging Permissions"
+            onPress={() => {}}
+          />
+          <SettingsRow
+            icon={<Cog6ToothIcon size={18} color="#fff" />}
+            iconBgColor="#8E8E93"
+            title="Activity Tracking"
+            subtitle="GPS, Units, Auto-Pause"
+            onPress={() => {}}
+            showDivider={false}
+          />
+        </SettingsSection>
+
+        {/* Account Actions */}
+        <SettingsSection>
+          <SettingsRow
+            icon={<ArrowRightOnRectangleIcon size={18} color="#EF4444" />}
+            title="Log Out"
+            onPress={() => {
+              // TODO: Implement Logout
+            }}
+            isDestructive
+            showDivider={false}
+          />
+        </SettingsSection>
+
+        {/* App Info */}
+        <View style={styles.appInfo}>
+          <Text style={styles.appVersion}>Chainge v1.0.0</Text>
+          <Text style={styles.appCopyright}>Made with love</Text>
         </View>
 
       </ScrollView>
@@ -115,68 +132,88 @@ export default function SettingsScreen() {
 const styles = StyleSheet.create({
   content: {
     padding: spacing.md,
+    paddingTop: spacing.lg,
   },
+  // Profile Card Styles
   profileCard: {
-    backgroundColor: colors.background.modal,
-    borderRadius: 24,
-    padding: spacing.lg,
-    marginBottom: spacing.lg,
-    marginTop: spacing.md,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 16,
+    padding: spacing.md,
+    marginBottom: spacing.xl,
   },
   profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.md,
   },
   avatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
   },
   avatarPlaceholder: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: colors.background.subtle,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   avatarInitials: {
-    ...typography.presets.bodyLarge,
-    fontWeight: 'bold',
+    ...typography.presets.h2,
+    fontWeight: '600',
     color: colors.text.secondary,
   },
   profileInfo: {
     flex: 1,
     marginLeft: spacing.md,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
   profileName: {
     ...typography.presets.bodyLarge,
-    fontWeight: '700',
+    fontWeight: '600',
     color: colors.text.primary,
-    marginRight: 4,
+    letterSpacing: -0.3,
   },
   verifiedBadge: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: colors.text.secondary, // Grayish badge in dark mode
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    backgroundColor: '#007AFF',
     alignItems: 'center',
     justifyContent: 'center',
+    marginLeft: 6,
+  },
+  verifiedCheck: {
+    fontSize: 9,
+    color: 'white',
+    fontWeight: '700',
   },
   profileHandle: {
     ...typography.presets.bodySmall,
     color: colors.text.secondary,
+    marginTop: 2,
   },
-  profileFooter: {
-    ...typography.presets.bodySmall,
+  profileSubtext: {
+    ...typography.presets.caption,
     color: colors.text.tertiary,
-    marginTop: spacing.xs,
+    marginTop: 4,
   },
-  section: {
-    marginBottom: spacing.xl,
+  // App Info
+  appInfo: {
+    alignItems: 'center',
+    paddingVertical: spacing.xl,
   },
-  footer: {
-      marginBottom: spacing.xxl,
-  }
+  appVersion: {
+    ...typography.presets.caption,
+    color: colors.text.tertiary,
+  },
+  appCopyright: {
+    ...typography.presets.caption,
+    color: colors.text.tertiary,
+    marginTop: 4,
+    opacity: 0.6,
+  },
 });

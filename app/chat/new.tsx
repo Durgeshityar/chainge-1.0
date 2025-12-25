@@ -1,7 +1,7 @@
 import { MeshGradientView } from 'expo-mesh-gradient';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { FlatList, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { ChevronLeftIcon, XMarkIcon } from 'react-native-heroicons/outline';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -31,6 +31,8 @@ export default function NewChatScreen() {
   const [results, setResults] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedUsers, setSelectedUsers] = useState<User[]>([]);
+  const [showGroupNameModal, setShowGroupNameModal] = useState(false);
+  const [groupName, setGroupName] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -77,7 +79,13 @@ export default function NewChatScreen() {
 
     try {
       const chat = await chatService.getOrCreateDirectChat(user.id, selectedUser.id);
-      router.replace(`/chat/${chat.id}`);
+      router.replace({
+        pathname: `/chat/${chat.id}`,
+        params: { 
+          name: selectedUser.name || selectedUser.username,
+          avatarUrl: selectedUser.avatarUrl || ''
+        }
+      });
     } catch (err) {
       console.error('Failed to create chat', err);
     }
@@ -90,14 +98,21 @@ export default function NewChatScreen() {
       // Single user - create direct chat
       handleUserSelect(selectedUsers[0]);
     } else {
-      // Multiple users - create group chat
-      try {
-        const participantIds = [user.id, ...selectedUsers.map(u => u.id)];
-        const chat = await chatService.createGroupChat(participantIds);
-        router.replace(`/chat/${chat.id}`);
-      } catch (err) {
-        console.error('Failed to create group chat', err);
-      }
+      // Multiple users - show modal for group name
+      setShowGroupNameModal(true);
+    }
+  };
+
+  const confirmGroupCreation = async () => {
+    if (!user || !groupName.trim()) return;
+
+    try {
+      const participantIds = [user.id, ...selectedUsers.map(u => u.id)];
+      const chat = await chatService.createGroupChat(participantIds, groupName.trim());
+      setShowGroupNameModal(false);
+      router.replace(`/chat/${chat.id}`);
+    } catch (err) {
+      console.error('Failed to create group chat', err);
     }
   };
 
@@ -218,6 +233,51 @@ export default function NewChatScreen() {
           }
           showsVerticalScrollIndicator={false}
         />
+        {/* Group Name Modal */}
+        <Modal
+          visible={showGroupNameModal}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setShowGroupNameModal(false)}
+        >
+          <TouchableOpacity 
+            style={styles.modalOverlay} 
+            activeOpacity={1} 
+            onPress={() => setShowGroupNameModal(false)}
+          >
+            <KeyboardAvoidingView 
+              behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+              style={{ width: '100%', alignItems: 'center' }}
+            >
+              <TouchableOpacity activeOpacity={1} style={styles.modalContent}>
+                <Text style={styles.modalTitle}>Group Name</Text>
+                <TextInput
+                  style={styles.modalInput}
+                  placeholder="Enter group name..."
+                  placeholderTextColor={colors.text.tertiary}
+                  value={groupName}
+                  onChangeText={setGroupName}
+                  autoFocus
+                />
+                <View style={styles.modalButtons}>
+                  <TouchableOpacity 
+                    style={[styles.modalButton, styles.cancelButton]} 
+                    onPress={() => setShowGroupNameModal(false)}
+                  >
+                    <Text style={styles.cancelButtonText}>Cancel</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.modalButton, styles.confirmButton, !groupName.trim() && styles.disabledButton]} 
+                    onPress={confirmGroupCreation}
+                    disabled={!groupName.trim()}
+                  >
+                    <Text style={styles.confirmButtonText}>Create</Text>
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            </KeyboardAvoidingView>
+          </TouchableOpacity>
+        </Modal>
       </ScreenContainer>
     </View>
   );
@@ -371,5 +431,67 @@ const styles = StyleSheet.create({
   emptyText: {
     ...typography.presets.bodySmall,
     color: colors.text.secondary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: colors.background.charcoal,
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 400,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+  },
+  modalTitle: {
+    ...typography.presets.h3,
+    color: colors.text.primary,
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  modalInput: {
+    backgroundColor: colors.background.input,
+    borderRadius: 12,
+    padding: 16,
+    color: colors.text.primary,
+    ...typography.presets.bodyLarge,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: colors.border.default,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cancelButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  confirmButton: {
+    backgroundColor: colors.primary,
+  },
+  disabledButton: {
+    opacity: 0.5,
+  },
+  cancelButtonText: {
+    ...typography.presets.bodyMedium,
+    color: colors.text.secondary,
+    fontWeight: '600',
+  },
+  confirmButtonText: {
+    ...typography.presets.bodyMedium,
+    color: colors.text.inverse,
+    fontWeight: '600',
   },
 });

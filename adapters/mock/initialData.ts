@@ -98,7 +98,7 @@ export const SEED_PROFILES: User[] = SEED_USERS.map((user) => ({
   bio: user.bio ?? 'I am a seeded test user.',
   followerCount: 120,
   followingCount: 45,
-  interests: ['coding', 'running', 'gaming'],
+  interests: ['Football', 'Running', 'Cycling'],
   createdAt: new Date(),
   updatedAt: new Date(),
   avatarUrl: user.avatarUrl ?? DEFAULT_AVATAR_URL,
@@ -153,7 +153,7 @@ export const SEED_ACTIVITIES: Activity[] = [
   {
     id: 'activity-juhu-yoga',
     userId: SEED_USERS[0].id,
-    activityType: 'Yoga',
+    activityType: 'Cricket',
     status: ActivityStatus.SCHEDULED,
     scheduledAt: new Date(Date.now() + 2 * 60 * 60 * 1000),
     startedAt: null,

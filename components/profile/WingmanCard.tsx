@@ -5,17 +5,23 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 interface WingmanCardProps {
   onPress: () => void;
+  name?: string;
+  viewerName?: string;
+  isCurrentUser?: boolean;
 }
 
-export const WingmanCard = ({ onPress }: WingmanCardProps) => {
+export const WingmanCard = ({ onPress, name, viewerName, isCurrentUser }: WingmanCardProps) => {
   return (
     <TouchableOpacity style={styles.container} onPress={onPress} activeOpacity={0.8}>
       <View style={styles.content}>
         <View style={styles.iconContainer}>
-            {/* Placeholder for the "spy" icon in the design */}
-             <Text style={{fontSize: 20}}>🕵️</Text>
+          <Text style={{ fontSize: 20 }}>🌶️</Text>
         </View>
-        <Text style={styles.text}>Hey there, I'm your wingman 🌶️</Text>
+        <Text style={styles.text}>
+          {isCurrentUser 
+            ? `Hey ${name} im your wingman`
+            : `hey ${viewerName} im ${name}'s wing man`}
+        </Text>
       </View>
     </TouchableOpacity>
   );
@@ -38,10 +44,10 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
   },
   iconContainer: {
-      width: 32,
-      height: 32,
-      justifyContent: 'center',
-      alignItems: 'center',
+    width: 32,
+    height: 32,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   text: {
     ...typography.presets.bodyMedium,

@@ -1,16 +1,16 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Dimensions, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { ActivityStatus, ActivityWithParticipants, Visibility } from '@/types';
-
+import { useAuth } from '@/hooks/useAuth';
 import { useNearbyStore } from '@/stores/nearbyStore';
+import { ActivityStatus, ActivityWithParticipants, Visibility } from '@/types';
 
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 
-import { ActivityDetailSheet, EmptyState, FilterSheet, SwipeStack } from '@/components/nearby';
-import { BottomSheet, BottomSheetRef } from '@/components/ui/BottomSheet';
+import { EmptyState, FilterSheet, SwipeStack } from '@/components/nearby';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const DETAIL_SHEET_OPEN_POSITION = -SCREEN_HEIGHT * 0.8;
@@ -41,7 +41,7 @@ const MOCK_ACTIVITIES: ActivityWithParticipants[] = [
       displayName: 'Julie Mehra',
       bio: 'Chasing goals on the field and off it.',
       avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800',
-      interests: ['Run', 'Table Tennis', 'Basketball'],
+      interests: ['Running', 'Table Tennis', 'Basketball'],
       latitude: null,
       longitude: null,
       followerCount: 1200,
@@ -76,7 +76,7 @@ const MOCK_ACTIVITIES: ActivityWithParticipants[] = [
       displayName: 'Alex Johnson',
       bio: 'Cycling enthusiast.',
       avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800',
-      interests: ['Cycling', 'Yoga'],
+      interests: ['Cycling', 'Football'],
       latitude: null,
       longitude: null,
       followerCount: 890,
@@ -111,7 +111,7 @@ const MOCK_ACTIVITIES: ActivityWithParticipants[] = [
       displayName: 'Priya Sharma',
       bio: 'Morning yoga sessions.',
       avatarUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=800',
-      interests: ['Yoga', 'Meditation'],
+      interests: ['Badminton', 'Tennis'],
       latitude: null,
       longitude: null,
       followerCount: 2100,
@@ -125,13 +125,13 @@ const MOCK_ACTIVITIES: ActivityWithParticipants[] = [
 ];
 
 export default function NearbyScreen() {
+  const router = useRouter();
+  const { user } = useAuth();
   const activities = useNearbyStore((state) => state.activities);
   const passedActivityIds = useNearbyStore((state) => state.passedActivityIds);
   const setActivities = useNearbyStore((state) => state.setActivities);
   const passActivity = useNearbyStore((state) => state.passActivity);
 
-  const detailSheetRef = useRef<BottomSheetRef>(null);
-  const [selectedActivity, setSelectedActivity] = useState<ActivityWithParticipants | null>(null);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   const visibleActivities = useMemo(
@@ -163,31 +163,17 @@ export default function NearbyScreen() {
 
   const handleCardPress = useCallback(
     (activity: ActivityWithParticipants) => {
-      setSelectedActivity(activity);
-      detailSheetRef.current?.scrollTo(DETAIL_SHEET_OPEN_POSITION);
+      const userId = activity.userId;
+      if (userId === user?.id) {
+        router.push('/(tabs)/profile');
+      } else {
+        router.push({
+          pathname: `/user/${userId}` as any,
+          params: { fromNearby: 'true' }
+        });
+      }
     },
-    [detailSheetRef],
-  );
-
-  const handleCloseDetailSheet = useCallback(() => {
-    detailSheetRef.current?.scrollTo(0);
-    setSelectedActivity(null);
-  }, [detailSheetRef]);
-
-  const handleJoinFromDetails = useCallback(
-    (activityId: string) => {
-      handleSwipeRight(activityId);
-      handleCloseDetailSheet();
-    },
-    [handleSwipeRight, handleCloseDetailSheet],
-  );
-
-  const handlePassFromDetails = useCallback(
-    (activityId: string) => {
-      handleSwipeLeft(activityId);
-      handleCloseDetailSheet();
-    },
-    [handleSwipeLeft, handleCloseDetailSheet],
+    [user, router],
   );
 
   return (
@@ -204,16 +190,6 @@ export default function NearbyScreen() {
           <EmptyState />
         )}
       </View>
-
-      <BottomSheet ref={detailSheetRef} snapPoints={['80%']} onClose={handleCloseDetailSheet}>
-        {selectedActivity ? (
-          <ActivityDetailSheet
-            activity={selectedActivity}
-            onJoin={handleJoinFromDetails}
-            onPass={handlePassFromDetails}
-          />
-        ) : null}
-      </BottomSheet>
 
       {isFilterOpen && (
         <FilterSheet

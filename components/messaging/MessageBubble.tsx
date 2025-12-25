@@ -8,7 +8,7 @@ import { Image } from 'expo-image';
 import React, { useCallback, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { Squares2X2Icon } from 'react-native-heroicons/solid';
+import { ChatBubbleLeftRightIcon, Squares2X2Icon } from 'react-native-heroicons/solid';
 import Animated, {
   Extrapolate,
   interpolate,
@@ -19,6 +19,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { MediaPreviewModal } from './MediaPreviewModal';
+import { MessageReaction } from './MessageActionsSheet';
 
 const STACK_WIDTH = 220;
 const STACK_HEIGHT = 200;
@@ -36,13 +37,21 @@ const SPRING_CONFIG = {
 };
 
 interface MessageBubbleProps {
-  message: MessageWithSender & { mediaUrls?: string[] };
+  message: MessageWithSender & {
+    mediaUrls?: string[];
+    reactions?: MessageReaction[];
+    threadCount?: number;
+  };
   showSenderName?: boolean;
+  onLongPress?: (message: MessageWithSender) => void;
+  onThreadPress?: (message: MessageWithSender) => void;
 }
 
 export const MessageBubble: React.FC<MessageBubbleProps> = ({
   message,
   showSenderName = false,
+  onLongPress,
+  onThreadPress,
 }) => {
   const { user } = useAuth();
   const [modalVisible, setModalVisible] = useState(false);
@@ -52,6 +61,16 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
   const time = new Date(message.createdAt);
   const mediaUrls = message.mediaUrls || [];
   const mediaCount = mediaUrls.length;
+  const reactions = message.reactions || [];
+  const threadCount = message.threadCount || 0;
+
+  const handleLongPress = useCallback(() => {
+    onLongPress?.(message);
+  }, [message, onLongPress]);
+
+  const handleThreadPress = useCallback(() => {
+    onThreadPress?.(message);
+  }, [message, onThreadPress]);
 
   const dragX = useSharedValue(0);
   const animatedIndex = useSharedValue(0);
@@ -126,6 +145,48 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
     );
   };
 
+  // Render reactions row
+  const renderReactions = () => {
+    if (reactions.length === 0) return null;
+
+    return (
+      <View style={[
+        styles.reactionsContainer,
+        isMe ? styles.reactionsContainerMe : styles.reactionsContainerOther
+      ]}>
+        {reactions.map((reaction, index) => (
+          <View key={index} style={styles.reactionBadge}>
+            <Text style={styles.reactionEmoji}>{reaction.emoji}</Text>
+            {reaction.count > 1 && (
+              <Text style={styles.reactionCount}>{reaction.count}</Text>
+            )}
+          </View>
+        ))}
+      </View>
+    );
+  };
+
+  // Render thread indicator
+  const renderThreadIndicator = () => {
+    if (threadCount === 0) return null;
+
+    return (
+      <TouchableOpacity
+        style={[
+          styles.threadIndicator,
+          isMe ? styles.threadIndicatorMe : styles.threadIndicatorOther
+        ]}
+        onPress={handleThreadPress}
+        activeOpacity={0.7}
+      >
+        <ChatBubbleLeftRightIcon size={12} color={colors.primary} />
+        <Text style={styles.threadCount}>
+          {threadCount} {threadCount === 1 ? 'reply' : 'replies'}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+
   return (
     <>
       <View style={[
@@ -134,24 +195,29 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
       ]}>
         {!isMe && (
           <View style={styles.avatarContainer}>
-            <Avatar 
-              source={message.sender?.avatarUrl || undefined} 
-              name={message.sender?.name || message.sender?.username} 
-              size="sm" 
+            <Avatar
+              source={message.sender?.avatarUrl || undefined}
+              name={message.sender?.name || message.sender?.username}
+              size="sm"
             />
           </View>
         )}
 
-        <View style={[
-          styles.contentWrapper, 
-          isMe ? styles.contentWrapperMe : styles.contentWrapperOther
-        ]}>
+        <TouchableOpacity
+          style={[
+            styles.contentWrapper,
+            isMe ? styles.contentWrapperMe : styles.contentWrapperOther
+          ]}
+          onLongPress={handleLongPress}
+          delayLongPress={300}
+          activeOpacity={0.9}
+        >
           {showSenderName && !isMe && message.sender && (
             <Text style={styles.senderName}>
               {message.sender.name || message.sender.username}
             </Text>
           )}
-          
+
           {renderMediaStack()}
 
           {message.content ? (
@@ -180,7 +246,10 @@ export const MessageBubble: React.FC<MessageBubbleProps> = ({
               {format(time, 'h:mm a')}
             </Text>
           )}
-        </View>
+
+          {renderReactions()}
+          {renderThreadIndicator()}
+        </TouchableOpacity>
 
       </View>
 
@@ -445,5 +514,54 @@ const styles = StyleSheet.create({
   },
   timeOther: {
     color: colors.text.tertiary,
+  },
+  // Reactions styles
+  reactionsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+    marginTop: 6,
+  },
+  reactionsContainerMe: {
+    justifyContent: 'flex-end',
+  },
+  reactionsContainerOther: {
+    justifyContent: 'flex-start',
+  },
+  reactionBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 4,
+  },
+  reactionEmoji: {
+    fontSize: 14,
+  },
+  reactionCount: {
+    ...typography.presets.caption,
+    color: colors.text.secondary,
+    fontSize: 11,
+  },
+  // Thread indicator styles
+  threadIndicator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 6,
+    gap: 4,
+  },
+  threadIndicatorMe: {
+    justifyContent: 'flex-end',
+  },
+  threadIndicatorOther: {
+    justifyContent: 'flex-start',
+  },
+  threadCount: {
+    ...typography.presets.caption,
+    color: colors.primary,
+    fontSize: 11,
+    fontWeight: '500',
   },
 });

@@ -13,12 +13,14 @@ interface ProfileState {
   posts: Post[];
   isLoading: boolean;
   isCurrentUser: boolean;
+  isFollowing: boolean;
 
   // Actions (State Setters)
   setUser: (user: User | null, isCurrentUser: boolean) => void;
   setStats: (stats: ProfileStats) => void;
   setPosts: (posts: Post[]) => void;
   setIsLoading: (isLoading: boolean) => void;
+  setIsFollowing: (isFollowing: boolean) => void;
 }
 
 export const useProfileStore = create<ProfileState>((set) => ({
@@ -27,9 +29,11 @@ export const useProfileStore = create<ProfileState>((set) => ({
   posts: [],
   isLoading: false,
   isCurrentUser: true,
+  isFollowing: false,
 
   setUser: (user, isCurrentUser) => set({ user, isCurrentUser }),
   setStats: (stats) => set({ stats }),
   setPosts: (posts) => set({ posts }),
   setIsLoading: (isLoading) => set({ isLoading }),
+  setIsFollowing: (isFollowing) => set({ isFollowing }),
 }));

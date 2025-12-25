@@ -4,24 +4,28 @@ import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
 import { format } from 'date-fns';
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
     Animated,
+    Dimensions,
     ImageBackground,
     Pressable,
     StyleSheet,
     Text,
     TouchableOpacity,
-    View,
+    View
 } from 'react-native';
 import {
     ArrowUpOnSquareIcon,
     ChatBubbleOvalLeftIcon,
     EllipsisVerticalIcon,
+    EyeSlashIcon,
     HeartIcon,
     SpeakerWaveIcon,
     SpeakerXMarkIcon,
+    TrashIcon,
 } from 'react-native-heroicons/outline';
+import { ActionMenu, ActionMenuItem } from '../ui/ActionMenu';
 
 const HERO_HEIGHT = 520;
 const COMPACT_HEIGHT = 300;
@@ -36,24 +40,32 @@ const formatCount = (value: number): string => {
 
 interface PostCardProps {
   post: FeedPost;
+  showMoreMenu?: boolean;
   onPress?: (post: FeedPost) => void;
   onLikeToggle?: (post: FeedPost) => void;
   onCommentPress?: (post: FeedPost) => void;
   onSharePress?: (post: FeedPost) => void;
   onToggleMute?: (post: FeedPost) => void;
+  onUserPress?: (userId: string) => void;
 }
 
 export const PostCard: React.FC<PostCardProps> = ({
   post,
+  showMoreMenu = false,
   onPress,
   onLikeToggle,
   onCommentPress,
   onSharePress,
   onToggleMute,
+  onUserPress,
 }) => {
   const lastTap = useRef<number>(0);
   const singleTapTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const heartScale = useRef(new Animated.Value(0)).current;
+  const [menuVisible, setMenuVisible] = useState(false);
+  const [menuAnchor, setMenuAnchor] = useState<{ top: number; right: number }>({ top: 0, right: 20 });
+  const moreButtonRef = useRef<View>(null);
+
 
   const activityLabel = post.activity?.activityType ?? 'Football';
   const durationMinutes = useMemo(() => {
@@ -98,6 +110,27 @@ export const PostCard: React.FC<PostCardProps> = ({
   const overlayTitle = post.caption ?? 'Easy miles to close that 10k';
   const locationLabel = post.user?.location ?? 'Juhu, Andheri';
 
+  const handleMorePress = () => {
+    moreButtonRef.current?.measure((x, y, width, height, pageX, pageY) => {
+      setMenuAnchor({ top: pageY + height, right: Dimensions.get('window').width - (pageX + width) });
+      setMenuVisible(true);
+    });
+  };
+
+  const menuItems: ActionMenuItem[] = [
+    {
+      label: 'Unpublish',
+      icon: EyeSlashIcon,
+      onPress: () => console.log('Unpublish pressed for post:', post.id),
+    },
+    {
+      label: 'Delete',
+      icon: TrashIcon,
+      onPress: () => console.log('Delete pressed for post:', post.id),
+      isDestructive: true,
+    },
+  ];
+
   const engagementRow = (
     <View style={styles.engagementRow}>
       <TouchableOpacity style={styles.engagementButton} onPress={handleLike}>
@@ -115,26 +148,38 @@ export const PostCard: React.FC<PostCardProps> = ({
       <TouchableOpacity style={styles.engagementButton} onPress={() => onSharePress?.(post)}>
         <ArrowUpOnSquareIcon size={22} color={colors.text.secondary} />
       </TouchableOpacity>
-      <TouchableOpacity style={styles.moreButton}>
-        <EllipsisVerticalIcon size={20} color={colors.text.secondary} />
-      </TouchableOpacity>
+      {showMoreMenu && (
+        <View ref={moreButtonRef} collapsable={false}>
+          <TouchableOpacity style={styles.moreButton} onPress={handleMorePress}>
+            <EllipsisVerticalIcon size={20} color={colors.text.secondary} />
+          </TouchableOpacity>
+        </View>
+      )}
     </View>
   );
+
+
 
   if (post.layout === 'compact') {
     return (
       <View style={[styles.card, { height: 'auto' }]}>
         {/* Header */}
         <View style={styles.headerContainer}>
-          <Avatar
-            size={36}
-            source={post.user?.avatarUrl ?? undefined}
-            name={post.user?.name ?? ''}
-          />
-          <View style={styles.headerTextWrap}>
-            <Text style={styles.userName}>{post.user?.name ?? 'Susan Thomas'}</Text>
-            <Text style={styles.metaText}>{locationLabel}</Text>
-          </View>
+          <TouchableOpacity 
+            style={styles.headerUserPressable} 
+            onPress={() => onUserPress?.(post.userId)}
+            activeOpacity={0.7}
+          >
+            <Avatar
+              size={36}
+              source={post.user?.avatarUrl ?? undefined}
+              name={post.user?.name ?? ''}
+            />
+            <View style={styles.headerTextWrap}>
+              <Text style={styles.userName}>{post.user?.name ?? 'Susan Thomas'}</Text>
+              <Text style={styles.metaText}>{locationLabel}</Text>
+            </View>
+          </TouchableOpacity>
           <Text style={styles.timestamp}>{timeDisplay || '5:05 PM'}</Text>
         </View>
 
@@ -157,6 +202,13 @@ export const PostCard: React.FC<PostCardProps> = ({
 
         {/* Actions */}
         {engagementRow}
+
+        <ActionMenu
+          visible={menuVisible}
+          onClose={() => setMenuVisible(false)}
+          items={menuItems}
+          anchorPosition={menuAnchor}
+        />
       </View>
     );
   }
@@ -165,15 +217,21 @@ export const PostCard: React.FC<PostCardProps> = ({
     <View style={[styles.card, { height: 'auto' }]}>
       {/* Header */}
       <View style={styles.headerContainer}>
-        <Avatar
-          size={36}
-          source={post.user?.avatarUrl ?? undefined}
-          name={post.user?.name ?? ''}
-        />
-        <View style={styles.headerTextWrap}>
-          <Text style={styles.userName}>{post.user?.name ?? 'Susan Thomas'}</Text>
-          <Text style={styles.metaText}>{locationLabel}</Text>
-        </View>
+        <TouchableOpacity 
+          style={styles.headerUserPressable} 
+          onPress={() => onUserPress?.(post.userId)}
+          activeOpacity={0.7}
+        >
+          <Avatar
+            size={36}
+            source={post.user?.avatarUrl ?? undefined}
+            name={post.user?.name ?? ''}
+          />
+          <View style={styles.headerTextWrap}>
+            <Text style={styles.userName}>{post.user?.name ?? 'Susan Thomas'}</Text>
+            <Text style={styles.metaText}>{locationLabel}</Text>
+          </View>
+        </TouchableOpacity>
         <Text style={styles.timestamp}>{timeDisplay || '5:05 PM'}</Text>
       </View>
 
@@ -239,11 +297,21 @@ export const PostCard: React.FC<PostCardProps> = ({
 
       {/* Actions */}
       {engagementRow}
+
+      <ActionMenu
+        visible={menuVisible}
+        onClose={() => setMenuVisible(false)}
+        items={menuItems}
+        anchorPosition={menuAnchor}
+      />
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   card: {
     width: '100%',
     marginBottom: spacing.xxl,
@@ -251,8 +319,14 @@ const styles = StyleSheet.create({
   headerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: spacing.sm,
     paddingHorizontal: spacing.xs,
+  },
+  headerUserPressable: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   heroCard: {
     borderRadius: 24,

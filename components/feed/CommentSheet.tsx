@@ -4,14 +4,13 @@ import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
 import { PostComment } from '@/types';
-import { forwardRef, useImperativeHandle, useMemo, useRef, useState } from 'react';
+import { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import {
     ActivityIndicator,
     Dimensions,
     FlatList,
     KeyboardAvoidingView,
     Platform,
-    Pressable,
     RefreshControl,
     StyleSheet,
     Text,
@@ -19,7 +18,6 @@ import {
     TouchableOpacity,
     View
 } from 'react-native';
-import { XMarkIcon } from 'react-native-heroicons/outline';
 import { ArrowUpIcon } from 'react-native-heroicons/solid';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
@@ -29,7 +27,6 @@ export interface CommentSheetHandle {
 }
 
 interface CommentSheetProps {
-  postTitle?: string;
   comments: (PostComment & { user?: { name?: string | null; avatarUrl?: string | null } })[];
   isLoading?: boolean;
   onClose?: () => void;
@@ -42,12 +39,11 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 const SNAP_POINT = -SCREEN_HEIGHT * 0.85;
 
 export const CommentSheet = forwardRef<CommentSheetHandle, CommentSheetProps>(
-  ({ postTitle, comments, isLoading = false, isRefreshing = false, onClose, onSend, onRefresh }, ref) => {
+  ({ comments, isLoading = false, isRefreshing = false, onClose, onSend, onRefresh }, ref) => {
     const insets = useSafeAreaInsets();
     const bottomSheetRef = useRef<BottomSheetRef>(null);
     const [message, setMessage] = useState('');
 
-    const title = useMemo(() => postTitle ?? 'Comments', [postTitle]);
 
     const open = () => bottomSheetRef.current?.scrollTo(SNAP_POINT);
     const close = () => bottomSheetRef.current?.scrollTo(0);
@@ -72,18 +68,8 @@ export const CommentSheet = forwardRef<CommentSheetHandle, CommentSheetProps>(
           keyboardVerticalOffset={Platform.OS === 'ios' ? 12 : 0}
         >
           <View style={styles.sheetContent}>
-            <View style={styles.header}>
-              <Pressable onPress={close} hitSlop={10}>
-                <XMarkIcon size={20} color={colors.text.secondary} />
-              </Pressable>
-              <View style={styles.titleWrap}>
-                <View style={styles.commentPill}>
-                  <Text style={styles.commentPillText}>{comments.length}</Text>
-                </View>
-                <Text style={styles.titleText}>{title}</Text>
-              </View>
-              <View style={{ width: 24 }} />
-            </View>
+            {/* Header removed */}
+
 
             {isLoading ? (
               <View style={styles.loadingWrap}>
@@ -166,33 +152,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
     paddingBottom: spacing.md,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: spacing.md,
-  },
-  titleWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  commentPill: {
-    backgroundColor: colors.background.card, // Was #243028
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-    borderRadius: 12,
-  },
-  commentPillText: {
-    color: colors.text.primary,
-    fontFamily: typography.fonts.medium,
-    fontSize: typography.sizes.sm,
-  },
-  titleText: {
-    color: colors.text.primary,
-    fontFamily: typography.fonts.medium,
-    fontSize: typography.sizes.lg,
-  },
+
   list: {
     flex: 1,
   },

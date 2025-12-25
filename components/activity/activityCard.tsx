@@ -8,9 +8,18 @@ interface ActivityCardProps {
   time: string;
   location: string;
   variant?: keyof typeof CARD_MESH_VARIANTS;
+  onPress?: () => void;
+  showButton?: boolean;
 }
 
-export const ActivityCard = ({ title, time, location, variant = 'purple' }: ActivityCardProps) => {
+export const ActivityCard = ({ 
+  title, 
+  time, 
+  location, 
+  variant = 'purple', 
+  onPress,
+  showButton = true 
+}: ActivityCardProps) => {
   const { colors, points } = CARD_MESH_VARIANTS[variant];
   return (
     <View style={styles.wrapper}>
@@ -46,9 +55,11 @@ export const ActivityCard = ({ title, time, location, variant = 'purple' }: Acti
             <Text style={styles.locationText}>{location}</Text>
           </View>
 
-          <TouchableOpacity style={styles.button}>
-            <Text style={styles.buttonText}>Start</Text>
-          </TouchableOpacity>
+          {showButton && (
+            <TouchableOpacity style={styles.button} onPress={onPress}>
+              <Text style={styles.buttonText}>View</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
     </View>

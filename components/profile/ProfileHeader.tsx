@@ -1,96 +1,127 @@
-import { useProfile } from '@/hooks/useProfile';
-import { DEFAULT_AVATAR_URL, DEFAULT_COVER_URL } from '@/lib/constants';
-import { colors } from '@/theme/colors';
-import { spacing } from '@/theme/spacing';
-import { typography } from '@/theme/typography';
-import { BlurView } from 'expo-blur';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useRouter } from 'expo-router';
-import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import {
-  ArrowLeftIcon,
+  CheckBadgeIcon,
+  ChevronLeftIcon,
   Cog6ToothIcon,
   EllipsisVerticalIcon,
   MapPinIcon,
   ShareIcon,
 } from 'react-native-heroicons/outline';
+import { CheckBadgeIcon as CheckBadgeSolidIcon } from 'react-native-heroicons/solid';
+
+import { LinearGradient } from 'expo-linear-gradient';
+import { useRouter } from 'expo-router';
+import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { useProfile } from '@/hooks/useProfile';
+import { DEFAULT_AVATAR_URL } from '@/lib/constants';
+
+import { colors } from '@/theme/colors';
+import { spacing } from '@/theme/spacing';
+import { typography } from '@/theme/typography';
+
+import { ProfileHeaderSkeleton } from './profileHeaderSkeleton';
+
 export const ProfileHeader = () => {
-  const { user, stats, isCurrentUser } = useProfile();
+  const { user, stats, isCurrentUser, isLoading, isFollowing, toggleFollow } = useProfile();
   const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  if (!user) return null;
+  if (!user) {
+    return <ProfileHeaderSkeleton />;
+  }
+
+  if (isLoading) {
+    return <ProfileHeaderSkeleton />;
+  }
 
   return (
     <View style={styles.container}>
       <View style={styles.imageContainer}>
-        <Image
-          source={{ uri: user.coverImage || DEFAULT_COVER_URL }}
-          style={styles.coverImage}
-          resizeMode="cover"
-        />
+        {/* COVER IMAGE */}
+        {user.coverImage ? (
+          <Image source={{ uri: user.coverImage }} style={styles.coverImage} resizeMode="cover" />
+        ) : null}
 
+        {/* BACK BUTTON FOR NON-CURRENT USER */}
         <View style={[styles.topNav, { paddingTop: insets.top + spacing.sm }]}>
           {!isCurrentUser && (
-            <TouchableOpacity style={styles.iconButton} onPress={() => router.back()}>
-              <BlurView intensity={20} tint="dark" style={styles.blurContainer}>
-                <ArrowLeftIcon size={24} color="white" />
-              </BlurView>
+            <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+              <ChevronLeftIcon size={24} color="white" />
             </TouchableOpacity>
           )}
 
+          {/* ACTION BUTTONS FOR CURRENT USER */}
           {isCurrentUser && (
             <View style={styles.rightIcons}>
-              <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/settings')}>
-                <BlurView intensity={20} tint="dark" style={styles.blurContainer}>
-                  <Cog6ToothIcon size={24} color="white" />
-                </BlurView>
+              {/* SETTINGS BUTTON */}
+              <TouchableOpacity style={styles.backButton} onPress={() => router.push('/settings')}>
+                <Cog6ToothIcon size={24} color="white" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.iconButton}>
-                <BlurView intensity={20} tint="dark" style={styles.blurContainer}>
-                  <ShareIcon size={24} color="white" />
-                </BlurView>
+              {/* SHARE BUTTON */}
+              <TouchableOpacity style={styles.backButton}>
+                <ShareIcon size={24} color="white" />
               </TouchableOpacity>
-              <TouchableOpacity style={styles.iconButton}>
-                <BlurView intensity={20} tint="dark" style={styles.blurContainer}>
-                  <EllipsisVerticalIcon size={24} color="white" />
-                </BlurView>
+              {/* MORE OPTIONS BUTTON */}
+              <TouchableOpacity style={styles.backButton}>
+                <EllipsisVerticalIcon size={24} color="white" />
               </TouchableOpacity>
             </View>
           )}
         </View>
-
+        {/* GRADIENT FOR COVER IMAGE */}
         <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.2)', colors.background.black]}
+          colors={['transparent', 'rgba(0,0,0,0.45)', colors.background.black]}
+          locations={[0, 0.5, 1]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
           style={styles.gradient}
         />
 
         <View style={styles.content}>
           <View style={styles.headerTop}>
+            {/* USER AVATAR */}
             <View style={styles.avatarContainer}>
               <Image source={{ uri: user.avatarUrl || DEFAULT_AVATAR_URL }} style={styles.avatar} />
             </View>
 
+            {/* EDIT PROFILE / FOLLOW BUTTON */}
             {isCurrentUser ? (
-              <TouchableOpacity style={styles.editButton} onPress={() => router.push('/settings/edit-profile')}>
+              <TouchableOpacity
+                style={styles.editButton}
+                onPress={() => router.push('/settings/edit-profile')}
+              >
                 <Text style={styles.editButtonText}>Edit Profile</Text>
               </TouchableOpacity>
             ) : (
               <TouchableOpacity
                 style={[
                   styles.editButton,
-                  { backgroundColor: colors.primary, borderColor: colors.primary },
+                  isFollowing ? { backgroundColor: 'rgba(255,255,255,0.1)' } : { backgroundColor: colors.primary, borderColor: colors.primary },
                 ]}
+                onPress={toggleFollow}
               >
-                <Text style={[styles.editButtonText, { color: colors.text.inverse }]}>Follow</Text>
+                <Text style={[styles.editButtonText, !isFollowing && { color: colors.text.inverse }]}>
+                  {isFollowing ? 'Following' : 'Follow'}
+                </Text>
               </TouchableOpacity>
             )}
           </View>
 
+          {/* USER INFO */}
           <View style={styles.infoContainer}>
-            <Text style={styles.name}>{user.name}</Text>
+            <View style={styles.nameRow}>
+              <Text style={styles.name}>{user.name}</Text>
+              {isCurrentUser && (
+                <TouchableOpacity
+                  style={styles.verifyButton}
+                  onPress={() => router.push('/verify')}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.verifyButtonText}>Verify</Text>
+                </TouchableOpacity>
+              )}
+            </View>
             <Text style={styles.username}>@{user.username}</Text>
 
             <View style={styles.metaRow}>
@@ -129,11 +160,12 @@ export const ProfileHeader = () => {
             <View style={styles.section}>
               <Text style={styles.sectionLabel}>Game on</Text>
               <View style={styles.interestsRow}>
-                {user.interests.map((interest, index) => (
-                  <View key={index} style={styles.interestBadge}>
-                    <Text style={styles.interestText}>⚽ {interest}</Text>
-                  </View>
-                ))}
+                {user.interests.length !== 0 &&
+                  user.interests.map((interest, index) => (
+                    <View key={index} style={styles.interestBadge}>
+                      <Text style={styles.interestText}>{interest}</Text>
+                    </View>
+                  ))}
               </View>
             </View>
           </View>
@@ -176,19 +208,13 @@ const styles = StyleSheet.create({
     gap: spacing.sm,
     marginLeft: 'auto',
   },
-  iconButton: {
+  backButton: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  blurContainer: {
-    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.2)', // Subtle tint on top of blur
   },
   content: {
     flex: 1,
@@ -231,10 +257,31 @@ const styles = StyleSheet.create({
   infoContainer: {
     gap: spacing.xs,
   },
+  nameRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+  },
   name: {
     ...typography.presets.h2,
     color: colors.text.primary,
     fontSize: 28,
+  },
+  verifyButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(152, 255, 0, 0.15)',
+    paddingHorizontal: spacing.sm,
+    paddingVertical: spacing.xs,
+    borderRadius: 16,
+    gap: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(152, 255, 0, 0.3)',
+  },
+  verifyButtonText: {
+    ...typography.presets.caption,
+    color: colors.primary,
+    fontWeight: '600',
   },
   username: {
     ...typography.presets.bodyMedium,

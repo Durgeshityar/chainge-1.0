@@ -3,6 +3,7 @@ import { useFocusEffect } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import { ActivityCard } from '@/components/activity/activityCard';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { PostGrid } from '@/components/profile/PostGrid';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
@@ -10,6 +11,8 @@ import { WingmanCard } from '@/components/profile/WingmanCard';
 import { WingmanSheet } from '@/components/profile/WingmanSheet';
 import { BottomSheet, BottomSheetRef } from '@/components/ui/BottomSheet';
 
+import { ActivityType } from '@/components/activity/ActivityPicker';
+import { ActivityScheduler } from '@/components/activity/ActivityScheduler';
 import { useProfile } from '@/hooks/useProfile';
 import { useAuthStore } from '@/stores/authStore';
 
@@ -17,11 +20,27 @@ import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
 
+const MOCK_EVENTS = [
+    { id: '1', title: 'Morning Run', time: '06:00 AM', location: 'Central Park', variant: 'purple' as const },
+    { id: '2', title: 'Yoga Session', time: '08:30 AM', location: 'Zen Studio', variant: 'teal' as const },
+    { id: '3', title: 'Evening Hike', time: '05:00 PM', location: 'Sunset Trail', variant: 'red' as const },
+    { id: '4', title: 'Cycling Meet', time: '07:00 AM', location: 'Riverside Path', variant: 'yellow' as const },
+    { id: '5', title: 'HIIT Workout', time: '06:00 PM', location: 'City Gym', variant: 'red' as const },
+];
+
 export default function ProfileScreen() {
   const { fetchProfile, fetchPosts, isLoading, stats, user } = useProfile();
   const { authUser, isInitialized } = useAuthStore();
   const bottomSheetRef = useRef<BottomSheetRef>(null);
   const [activeTab, setActiveTab] = useState<'posts' | 'events'>('posts');
+  
+  const editActivitySheetRef = useRef<BottomSheetRef>(null);
+  const [selectedEvent, setSelectedEvent] = useState<any | null>(null);
+
+  const handleViewActivity = (event: typeof MOCK_EVENTS[0]) => {
+    setSelectedEvent(event);
+    editActivitySheetRef.current?.scrollTo(-600);
+  };
 
   useFocusEffect(
     useCallback(() => {
@@ -55,9 +74,14 @@ export default function ProfileScreen() {
       >
         <ProfileHeader />
         
-        <WingmanCard onPress={handleOpenWingman} />
+        <WingmanCard 
+          onPress={handleOpenWingman} 
+          name={user?.name.split(' ')[0]} 
+          isCurrentUser={true}
+        />
         
-        <View style={styles.tabsContainer}>
+        {/* Profile Feed */}
+        <View style={styles.tabsContainer}> 
             <View style={styles.tabsWrapper}>
                 <TouchableOpacity 
                     style={[styles.tab, activeTab === 'posts' && styles.activeTab]} 
@@ -82,8 +106,18 @@ export default function ProfileScreen() {
             {activeTab === 'posts' ? (
                 <PostGrid />
             ) : (
-                <View style={styles.emptyState}>
-                    <Text style={styles.emptyStateText}>No events yet</Text>
+                <View style={styles.eventsList}>
+                    {MOCK_EVENTS.map((event) => (
+                        <View key={event.id} style={styles.eventItemWrapper}>
+                            <ActivityCard
+                                title={event.title}
+                                time={event.time}
+                                location={event.location}
+                                variant={event.variant}
+                                onPress={() => handleViewActivity(event)}
+                            />
+                        </View>
+                    ))}
                 </View>
             )}
         </View>
@@ -96,8 +130,25 @@ export default function ProfileScreen() {
         pointerEvents="none"
       />
 
-      <BottomSheet ref={bottomSheetRef} snapPoints={['60%']}>
+      <BottomSheet ref={bottomSheetRef} snapPoints={['60%']} backgroundColor="#000">
         <WingmanSheet />
+      </BottomSheet>
+
+      <BottomSheet ref={editActivitySheetRef} snapPoints={['75%']} backgroundColor="#050505">
+        {selectedEvent && (
+            <ActivityScheduler
+                activityType={selectedEvent.title.split(' ')[1] as ActivityType || 'Running'} // Simple inference for mock
+                onBack={() => editActivitySheetRef.current?.scrollTo(0)}
+                onSchedule={(details) => {
+                    console.log('Updated activity:', details);
+                    editActivitySheetRef.current?.scrollTo(0);
+                    // TODO: Update actual data source
+                }}
+                initialDate={new Date()} // Mock date
+                initialPlayground={selectedEvent.location}
+                initialVisibility="Public"
+            />
+        )}
       </BottomSheet>
     </ScreenContainer>
   );
@@ -143,6 +194,15 @@ const styles = StyleSheet.create({
     emptyStateText: {
         ...typography.presets.bodyMedium,
         color: colors.text.secondary,
+    },
+    eventsList: {
+        paddingTop: spacing.sm,
+        paddingHorizontal: spacing.md,
+        gap: spacing.md,
+        paddingBottom: spacing.xxl,
+    },
+    eventItemWrapper: {
+        height: 180, // Fixed height for visual consistency with ActivityCard design
     },
     bottomGradient: {
         position: 'absolute',

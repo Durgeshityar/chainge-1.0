@@ -1,5 +1,6 @@
 import { StatsDisplay } from '@/components/activity/StatsDisplay';
 import { TrackingMap } from '@/components/activity/TrackingMap';
+import { Modal } from '@/components/ui/Modal';
 import { useActivity } from '@/hooks/useActivity';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
@@ -7,7 +8,7 @@ import { ActivityTrackingStatus } from '@/types';
 import { Ionicons } from '@expo/vector-icons';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const isLiveStatus = (status?: ActivityTrackingStatus | null) =>
   status === ActivityTrackingStatus.ACTIVE || status === ActivityTrackingStatus.PAUSED;
@@ -38,6 +39,7 @@ const ActivityTrackingScreen = () => {
   // Real-time timer display
   const [displayTime, setDisplayTime] = useState(0);
   const [sessionError, setSessionError] = useState<string | null>(null);
+  const [showEndModal, setShowEndModal] = useState(false);
   const [isBootstrapping, setIsBootstrapping] = useState(false);
 
   // Calculate elapsed time in real-time
@@ -135,23 +137,16 @@ const ActivityTrackingScreen = () => {
   };
 
   const handleEnd = () => {
-    Alert.alert('End Activity', 'Are you sure you want to end this session?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'End Session',
-        style: 'destructive',
-        onPress: () => {
-          void (async () => {
-            const summary = await endSession();
-            if (summary) {
-              router.replace('/activity/summary');
-            } else {
-              router.back();
-            }
-          })();
-        },
-      },
-    ]);
+    setShowEndModal(true);
+  };
+
+  const confirmEndSession = async () => {
+    const summary = await endSession();
+    if (summary) {
+      router.replace('/activity/summary');
+    } else {
+      router.back();
+    }
   };
 
   const isMapActivity = ['Running', 'Cycling', 'Swimming'].includes(resolvedActivityType);
@@ -243,6 +238,26 @@ const ActivityTrackingScreen = () => {
           </TouchableOpacity>
         </View>
       </View>
+
+      {/* End Session Confirmation Modal */}
+      <Modal
+        visible={showEndModal}
+        onClose={() => setShowEndModal(false)}
+        title="End Activity?"
+        message="Are you sure you want to end this session? Your progress will be saved."
+        actions={[
+          {
+            label: 'End Session',
+            variant: 'destructive',
+            onPress: confirmEndSession,
+          },
+          {
+            label: 'Keep Going',
+            variant: 'cancel',
+            onPress: () => {},
+          },
+        ]}
+      />
     </View>
   );
 };

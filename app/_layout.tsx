@@ -93,7 +93,7 @@ export default function RootLayout() {
               <Stack.Screen name="(auth)" />
               <Stack.Screen name="settings/index" />
               <Stack.Screen name="settings/notifications" />
-              <Stack.Screen name="settings/edit-profile" options={{ presentation: 'modal' }} />
+              <Stack.Screen name="settings/edit-profile" />
               <Stack.Screen name="settings/location-picker" options={{ presentation: 'modal' }} />
               <Stack.Screen name="chat/new" options={{ presentation: 'modal' }} />
               <Stack.Screen name="notifications" />

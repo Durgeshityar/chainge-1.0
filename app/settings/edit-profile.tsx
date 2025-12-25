@@ -1,17 +1,16 @@
 import { BlurView } from 'expo-blur';
-import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Dimensions,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    Dimensions,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { ChevronDownIcon, PhotoIcon, PlusIcon } from 'react-native-heroicons/outline';
 
@@ -19,6 +18,7 @@ import { Header } from '@/components/layout/Header';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { BottomSheet, BottomSheetRef } from '@/components/ui/BottomSheet';
 import { Input } from '@/components/ui/Input';
+import { Modal } from '@/components/ui/Modal';
 import { WheelPicker } from '@/components/ui/WheelPicker';
 
 import { useAdapters } from '@/hooks/useAdapter';
@@ -26,61 +26,66 @@ import { useAuth } from '@/hooks/useAuth';
 import { ONBOARDING_ACTIVITY_TRACKERS, ONBOARDING_INTEREST_CATEGORIES } from '@/lib/constants';
 import { createUserService } from '@/services/users';
 import { useAuthStore } from '@/stores/authStore';
+import { useProfileEditStore } from '@/stores/profileEditStore';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
+import * as ImagePicker from 'expo-image-picker';
 
 const SCREEN_HEIGHT = Dimensions.get('window').height;
 
 export default function EditProfileScreen() {
   const router = useRouter();
   const { user } = useAuth();
-  const { setProfile: setAuthProfile } = useAuthStore();
-  const adapters = useAdapters();
-  const userService = useMemo(
-    () => createUserService(adapters.database, adapters.storage),
-    [adapters],
-  );
+  const {
+    name, username, location, bio, gender, dateOfBirth,
+    height, weight, activityTracker, interests,
+    avatarUri, coverUri,
+    setField, toggleInterest, initialize
+  } = useProfileEditStore();
 
+  // Initialize state from User
+  useEffect(() => {
+    if (user) {
+      initialize({
+        name: user.name || '',
+        username: user.username || '',
+        location: user.location || '',
+        gender: user.gender || '',
+        bio: user.bio || '',
+        dateOfBirth: user.dateOfBirth || '01 / 01 / 2000',
+        activityTracker: user.activityTracker || '',
+        interests: user.interests || [],
+        avatarUri: user.avatarUrl || undefined,
+        coverUri: user.coverImage || undefined,
+      });
+
+      // Height
+      if (user.height) {
+        if (user.height.includes('cm')) {
+          setField('height', { unit: 'cm', value: parseFloat(user.height) || 170 });
+        } else if (user.height.includes("'")) {
+          const parts = user.height.match(/(\d+)'(\d+)"/);
+          if (parts && parts.length === 3) {
+            setField('height', { unit: 'ft', value: parseFloat(parts[1]) + parseFloat(parts[2]) / 12 });
+          }
+        }
+      }
+
+      // Weight
+      if (user.weight) {
+        if (user.weight.includes('kg')) {
+          setField('weight', { unit: 'kg', value: parseFloat(user.weight) || 70 });
+        } else if (user.weight.includes('lbs')) {
+          setField('weight', { unit: 'lbs', value: parseFloat(user.weight) || 150 });
+        }
+      }
+    }
+  }, [user]);
+
+  const [photoModalVisible, setPhotoModalVisible] = useState(false);
+  const [activeImageType, setActiveImageType] = useState<'avatar' | 'cover' | undefined>(undefined);
   const [isLoading, setIsLoading] = useState(false);
-
-  // -- Form State --
-  const [name, setName] = useState('');
-  const [username, setUsername] = useState('');
-  const [location, setLocation] = useState('');
-
-  // Date of Birth
-  const [dateOfBirth, setDateOfBirth] = useState('');
-  const [dobDay, setDobDay] = useState(1);
-  const [dobMonth, setDobMonth] = useState('January');
-  const [dobYear, setDobYear] = useState(2000);
-
-  // Image Actions
-  const [activeImageType, setActiveImageType] = useState<'avatar' | 'cover' | null>(null);
-
-  // Gender
-  const [gender, setGender] = useState('');
-
-  // Height (Stored as plain number and unit for editor state)
-  const [heightValue, setHeightValue] = useState(170);
-  const [heightUnit, setHeightUnit] = useState<'cm' | 'ft'>('cm');
-
-  // Weight
-  const [weightValue, setWeightValue] = useState(70);
-  const [weightUnit, setWeightUnit] = useState<'kg' | 'lbs'>('kg');
-
-  // Activity Tracker
-  const [activityTracker, setActivityTracker] = useState('');
-
-  // Bio
-  const [bio, setBio] = useState('');
-
-  // Interests
-  const [interests, setInterests] = useState<string[]>([]);
-
-  // Images
-  const [avatarUri, setAvatarUri] = useState<string | null>(null);
-  const [coverUri, setCoverUri] = useState<string | null>(null);
 
   // -- Bottom Sheets Refs --
   const genderSheetRef = useRef<BottomSheetRef>(null);
@@ -89,9 +94,17 @@ export default function EditProfileScreen() {
   const activitySheetRef = useRef<BottomSheetRef>(null);
   const interestsSheetRef = useRef<BottomSheetRef>(null);
   const dobSheetRef = useRef<BottomSheetRef>(null);
-  const imageActionSheetRef = useRef<BottomSheetRef>(null);
 
-  // -- Memoized Items to prevent Picker Reset --
+  // -- Local temporary state for DOB Pickers --
+  const [dobDay, setDobDay] = useState(1);
+  const [dobMonth, setDobMonth] = useState('January');
+  const [dobYear, setDobYear] = useState(2000);
+
+  // -- Local state for Unit Conversions in Pickers --
+  // Note: Store keeps height value in cm/ft based on unit.
+  // We'll sync with store on open.
+  
+  // -- Memoized Items for WheelPickers --
   const cmItems = useMemo(() => Array.from({ length: 151 }, (_, i) => 100 + i), []);
   const ftItems = useMemo(() => {
     const items = [];
@@ -130,82 +143,12 @@ export default function EditProfileScreen() {
 
   const snapPoints = useMemo(() => ['50%'], []);
 
-  // Initialize state from User
-  useEffect(() => {
-    if (user) {
-      setName(user.name || '');
-      setUsername(user.username || '');
-
-      setLocation(user.location || '');
-      setGender(user.gender || '');
-      setBio(user.bio || '');
-
-      const dob = user.age ? '' : user.dateOfBirth || '01 / 01 / 2000'; // Fallback or parsed
-      setDateOfBirth(dob);
-
-      // Parse DOB for Picker
-      if (dob) {
-        const parts = dob.split('/').map((p) => p.trim());
-        if (parts.length === 3) {
-          setDobDay(parseInt(parts[0], 10));
-          const monthIndex = parseInt(parts[1], 10) - 1;
-          const months = [
-            'January',
-            'February',
-            'March',
-            'April',
-            'May',
-            'June',
-            'July',
-            'August',
-            'September',
-            'October',
-            'November',
-            'December',
-          ];
-          setDobMonth(months[monthIndex] || 'January');
-          setDobYear(parseInt(parts[2], 10));
-        }
-      }
-
-      setActivityTracker(user.activityTracker || '');
-      setInterests(user.interests || []);
-
-      setAvatarUri(user.avatarUrl);
-      setCoverUri(user.coverImage || null);
-
-      // Parse Height string "180 cm" or "5'11""
-      if (user.height) {
-        if (user.height.includes('cm')) {
-          setHeightUnit('cm');
-          setHeightValue(parseFloat(user.height) || 170);
-        } else if (user.height.includes("'")) {
-          setHeightUnit('ft');
-          const parts = user.height.match(/(\d+)'(\d+)"/);
-          if (parts && parts.length === 3) {
-            const feet = parseFloat(parts[1]);
-            const inches = parseFloat(parts[2]);
-            setHeightValue(feet + inches / 12);
-          } else {
-            setHeightValue(5.5);
-          }
-        }
-      }
-
-      // Parse Weight string "70 kg"
-      if (user.weight) {
-        if (user.weight.includes('kg')) {
-          setWeightUnit('kg');
-          setWeightValue(parseFloat(user.weight) || 70);
-        } else if (user.weight.includes('lbs')) {
-          setWeightUnit('lbs');
-          setWeightValue(parseFloat(user.weight) || 150);
-        }
-      }
-    }
-  }, [user]);
-
-  // -- Handlers --
+  const { setProfile: setAuthProfile } = useAuthStore();
+  const adapters = useAdapters();
+  const userService = useMemo(
+    () => createUserService(adapters.database, adapters.storage),
+    [adapters],
+  );
 
   const handlePickImage = async (type: 'avatar' | 'cover') => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -217,46 +160,11 @@ export default function EditProfileScreen() {
 
     if (!result.canceled) {
       if (type === 'avatar') {
-        setAvatarUri(result.assets[0].uri);
+        setField('avatarUri', result.assets[0].uri);
       } else {
-        setCoverUri(result.assets[0].uri);
+        setField('coverUri', result.assets[0].uri);
       }
     }
-  };
-
-  const handleDobChange = (text: string) => {
-    // Remove non-numeric characters
-    const cleaned = text.replace(/[^0-9]/g, '');
-    let truncated = cleaned.slice(0, 8); // Max 8 digits (DDMMYYYY)
-
-    // Validation Logic
-    if (truncated.length >= 2) {
-      const day = parseInt(truncated.slice(0, 2), 10);
-      if (day > 31) truncated = '31' + truncated.slice(2);
-      if (day === 0) truncated = '01' + truncated.slice(2);
-    }
-
-    if (truncated.length >= 4) {
-      const month = parseInt(truncated.slice(2, 4), 10);
-      if (month > 12) truncated = truncated.slice(0, 2) + '12' + truncated.slice(4);
-      if (month === 0) truncated = truncated.slice(0, 2) + '01' + truncated.slice(4);
-    }
-
-    let formatted = truncated;
-    if (truncated.length > 4) {
-      formatted = `${truncated.slice(0, 2)} / ${truncated.slice(2, 4)} / ${truncated.slice(4)}`;
-    } else if (truncated.length > 2) {
-      formatted = `${truncated.slice(0, 2)} / ${truncated.slice(2)}`;
-    }
-
-    setDateOfBirth(formatted);
-  };
-
-  const toggleInterest = (interest: string) => {
-    setInterests((prev) => {
-      if (prev.includes(interest)) return prev.filter((i) => i !== interest);
-      return [...prev, interest];
-    });
   };
 
   const handleSave = async () => {
@@ -264,18 +172,18 @@ export default function EditProfileScreen() {
     setIsLoading(true);
 
     try {
-      let finalAvatarUrl = user.avatarUrl;
-      let finalCoverUrl = user.coverImage;
+      let finalAvatarUrl: string | undefined = user.avatarUrl || undefined;
+      let finalCoverUrl: string | undefined = user.coverImage || undefined;
 
       if (avatarUri !== user.avatarUrl) finalAvatarUrl = avatarUri;
       if (coverUri !== user.coverImage) finalCoverUrl = coverUri;
 
       const heightStr =
-        heightUnit === 'cm'
-          ? `${Math.round(heightValue)} cm`
-          : `${Math.floor(heightValue)}'${Math.round((heightValue % 1) * 12)}"`;
+        height.unit === 'cm'
+          ? `${Math.round(height.value)} cm`
+          : `${Math.floor(height.value)}'${Math.round((height.value % 1) * 12)}"`;
 
-      const weightStr = `${Math.round(weightValue)} ${weightUnit}`;
+      const weightStr = `${Math.round(weight.value)} ${weight.unit}`;
 
       const updatedUser = await userService.updateProfile(user.id, {
         name: name.trim(),
@@ -289,7 +197,7 @@ export default function EditProfileScreen() {
         interests,
         avatarUrl: finalAvatarUrl ? finalAvatarUrl : undefined,
         coverImage: finalCoverUrl ? finalCoverUrl : undefined,
-        // age: calculate from DOB if possible
+        dateOfBirth: dateOfBirth,
       });
 
       setAuthProfile(updatedUser);
@@ -311,6 +219,7 @@ export default function EditProfileScreen() {
     placeholder,
     isSelector = false,
     onPressSelector,
+    ...props
   }: {
     label: string;
     value: string;
@@ -318,24 +227,35 @@ export default function EditProfileScreen() {
     placeholder: string;
     isSelector?: boolean;
     onPressSelector?: () => void;
+    [key: string]: any;
   }) => (
     <View style={styles.inputRow}>
       <Text style={styles.inputLabel}>{label}</Text>
       <View style={styles.inputWrapper}>
         {isSelector ? (
-          <TouchableOpacity style={styles.selectorButton} onPress={onPressSelector}>
-            <Text style={styles.selectorText}>{value || placeholder}</Text>
-            <ChevronDownIcon size={16} color={colors.text.primary} />
+          <TouchableOpacity 
+            style={styles.selectorButton} 
+            onPress={onPressSelector}
+            activeOpacity={0.7}
+          >
+            <Text 
+              numberOfLines={1} 
+              style={[styles.selectorText, !value && { color: colors.text.disabled }]}
+            >
+              {value || placeholder}
+            </Text>
+            <ChevronDownIcon size={16} color={colors.text.secondary} />
           </TouchableOpacity>
         ) : (
           <Input
             value={value}
             onChangeText={onChangeText}
             placeholder={placeholder}
-            containerStyle={styles.customInputContainer}
-            inputContainerStyle={styles.transparentInputContainer}
-            style={styles.customInput}
+            containerStyle={styles.inputComponentContainer}
+            inputContainerStyle={styles.inputComponentInner}
+            style={styles.inputComponentText}
             placeholderTextColor={colors.text.disabled}
+            {...props}
           />
         )}
       </View>
@@ -344,26 +264,7 @@ export default function EditProfileScreen() {
 
   const openImageActionSheet = (type: 'avatar' | 'cover') => {
     setActiveImageType(type);
-    imageActionSheetRef.current?.scrollTo(-SCREEN_HEIGHT / 2); // open at roughly 50%
-  };
-
-  const handleImageAction = async (action: 'update' | 'remove') => {
-    if (!activeImageType) return;
-
-    imageActionSheetRef.current?.scrollTo(0);
-
-    if (action === 'remove') {
-      if (activeImageType === 'avatar') {
-        setAvatarUri(null);
-      } else {
-        setCoverUri(null);
-      }
-    } else {
-      // Update
-      await handlePickImage(activeImageType);
-    }
-
-    setActiveImageType(null);
+    setPhotoModalVisible(true);
   };
 
   return (
@@ -389,10 +290,7 @@ export default function EditProfileScreen() {
         {/* Cover Image Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Cover Image</Text>
-          <TouchableOpacity
-            style={styles.coverImageContainer}
-            onPress={() => openImageActionSheet('cover')}
-          >
+          <View style={styles.coverImageContainer}>
             {coverUri ? (
               <Image source={{ uri: coverUri }} style={styles.coverImage} resizeMode="cover" />
             ) : (
@@ -400,10 +298,14 @@ export default function EditProfileScreen() {
                 <PhotoIcon size={32} color={colors.text.secondary} />
               </View>
             )}
-            <BlurView intensity={20} tint="dark" style={styles.editIconOverlay}>
+            <TouchableOpacity 
+              style={styles.editIconOverlay}
+              onPress={() => openImageActionSheet('cover')}
+            >
+              <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
               <PlusIcon size={16} color="white" />
-            </BlurView>
-          </TouchableOpacity>
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.dashedDivider} />
@@ -411,20 +313,22 @@ export default function EditProfileScreen() {
         {/* Profile Photo Section */}
         <View style={styles.profilePhotoRow}>
           <Text style={styles.sectionTitle}>Profile Photo</Text>
-          <TouchableOpacity onPress={() => openImageActionSheet('avatar')}>
-            <View style={styles.avatarContainer}>
-              {avatarUri ? (
-                <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
-              ) : (
-                <View style={styles.avatarPlaceholder}>
-                  <Text style={styles.avatarInitials}>{name?.[0]}</Text>
-                </View>
-              )}
-              <BlurView intensity={20} tint="dark" style={styles.avatarPlusBadge}>
-                <PlusIcon size={12} color="white" />
-              </BlurView>
-            </View>
-          </TouchableOpacity>
+          <View style={styles.avatarContainer}>
+            {avatarUri ? (
+              <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <Text style={styles.avatarInitials}>{name?.[0]}</Text>
+              </View>
+            )}
+            <TouchableOpacity 
+              style={styles.avatarPlusBadge}
+              onPress={() => openImageActionSheet('avatar')}
+            >
+              <BlurView intensity={20} tint="dark" style={StyleSheet.absoluteFill} />
+              <PlusIcon size={12} color="white" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.dashedDivider} />
@@ -434,14 +338,14 @@ export default function EditProfileScreen() {
           <CustomInputRow
             label="Name"
             value={name}
-            onChangeText={setName}
+            onChangeText={(v) => setField('name', v)}
             placeholder="Display Name"
           />
 
           <CustomInputRow
             label="Username"
             value={username}
-            onChangeText={setUsername}
+            onChangeText={(v) => setField('username', v)}
             placeholder="username"
           />
 
@@ -457,13 +361,23 @@ export default function EditProfileScreen() {
 
           <View style={styles.dashedDivider} />
 
-          {/* Date of Birth - Custom masking input */}
+          {/* Date of Birth */}
           <CustomInputRow
             label="Date of Birth"
             value={dateOfBirth}
             placeholder="DD / MM / YYYY"
             isSelector
-            onPressSelector={() => dobSheetRef.current?.scrollTo(-400)}
+            onPressSelector={() => {
+              // Parse current DOB for pickers
+              const parts = dateOfBirth.split('/').map(p => p.trim());
+              if (parts.length === 3) {
+                setDobDay(parseInt(parts[0], 10));
+                const monthIndex = parseInt(parts[1], 10) - 1;
+                setDobMonth(dobMonths[monthIndex] || 'January');
+                setDobYear(parseInt(parts[2], 10));
+              }
+              dobSheetRef.current?.scrollTo(-400);
+            }}
           />
 
           <View style={styles.dashedDivider} />
@@ -481,9 +395,9 @@ export default function EditProfileScreen() {
           <CustomInputRow
             label="Height"
             value={
-              heightUnit === 'cm'
-                ? `${Math.round(heightValue)} cm`
-                : `${Math.floor(heightValue)}'${Math.round((heightValue % 1) * 12)}"`
+              height.unit === 'cm'
+                ? `${Math.round(height.value)} cm`
+                : `${Math.floor(height.value)}'${Math.round((height.value % 1) * 12)}"`
             }
             placeholder="Select"
             isSelector
@@ -494,7 +408,7 @@ export default function EditProfileScreen() {
 
           <CustomInputRow
             label="Weight"
-            value={`${Math.round(weightValue)} ${weightUnit}`}
+            value={`${Math.round(weight.value)} ${weight.unit}`}
             placeholder="Select"
             isSelector
             onPressSelector={() => weightSheetRef.current?.scrollTo(-400)}
@@ -525,18 +439,26 @@ export default function EditProfileScreen() {
           <Input
             label="Bio"
             value={bio}
-            onChangeText={setBio}
+            onChangeText={(v) => setField('bio', v)}
             placeholder="Write a short bio..."
             multiline
             numberOfLines={3}
             textAlignVertical="top"
             containerStyle={{ marginTop: spacing.sm }}
             inputContainerStyle={{
-              ...styles.transparentInputContainer,
+              backgroundColor: '#111',
+              borderColor: '#333',
+              borderRadius: 16,
               height: 100,
               alignItems: 'flex-start',
+              paddingTop: spacing.sm,
             }}
-            style={{ ...styles.customInput, height: '100%' }}
+            style={{ 
+                color: colors.text.primary,
+                ...typography.presets.bodyMedium,
+                height: '100%',
+                paddingTop: 0,
+            }}
           />
         </View>
 
@@ -553,7 +475,7 @@ export default function EditProfileScreen() {
             <WheelPicker
               items={['Male', 'Female', 'Other', 'Prefer not to say']}
               selectedValue={gender}
-              onValueChange={setGender}
+              onValueChange={(v) => setField('gender', String(v))}
               height={200}
             />
           </View>
@@ -575,38 +497,36 @@ export default function EditProfileScreen() {
               <TouchableOpacity
                 key={u}
                 onPress={() => {
-                  // Conversion logic
-                  if (u !== heightUnit) {
-                    const newVal = u === 'ft' ? heightValue / 30.48 : heightValue * 30.48;
-                    setHeightValue(newVal);
-                    setHeightUnit(u);
+                  if (u !== height.unit) {
+                    const newVal = u === 'ft' ? height.value / 30.48 : height.value * 30.48;
+                    setField('height', { unit: u, value: newVal });
                   }
                 }}
-                style={[styles.toggleButton, heightUnit === u && styles.activeToggle]}
+                style={[styles.toggleButton, height.unit === u && styles.activeToggle]}
               >
-                <Text style={[styles.toggleText, heightUnit === u && styles.activeToggleText]}>
+                <Text style={[styles.toggleText, height.unit === u && styles.activeToggleText]}>
                   {u}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
           <View style={styles.pickerContainer}>
-            {heightUnit === 'cm' ? (
+            {height.unit === 'cm' ? (
               <WheelPicker
                 key="cm"
                 items={cmItems}
-                selectedValue={Math.round(heightValue)}
-                onValueChange={(v) => setHeightValue(Number(v))}
+                selectedValue={Math.round(height.value)}
+                onValueChange={(v) => setField('height', { ...height, value: Number(v) })}
               />
             ) : (
               <WheelPicker
                 key="ft"
                 items={ftItems}
-                selectedValue={`${Math.floor(heightValue)}'${Math.round((heightValue % 1) * 12)}"`}
+                selectedValue={`${Math.floor(height.value)}'${Math.round((height.value % 1) * 12)}"`}
                 onValueChange={(val) => {
                   const str = val as string;
-                  const [f, i] = str.split("'").map((s) => parseFloat(s));
-                  setHeightValue(f + i / 12);
+                  const [f, i] = str.split("'").map((s) => parseFloat(s.replace(/"/g, '')));
+                  setField('height', { ...height, value: f + i / 12 });
                 }}
               />
             )}
@@ -629,16 +549,14 @@ export default function EditProfileScreen() {
               <TouchableOpacity
                 key={u}
                 onPress={() => {
-                  // Conversion logic
-                  if (u !== weightUnit) {
-                    const newVal = u === 'lbs' ? weightValue * 2.20462 : weightValue / 2.20462;
-                    setWeightValue(newVal);
-                    setWeightUnit(u);
+                  if (u !== weight.unit) {
+                    const newVal = u === 'lbs' ? weight.value * 2.20462 : weight.value / 2.20462;
+                    setField('weight', { unit: u, value: newVal });
                   }
                 }}
-                style={[styles.toggleButton, weightUnit === u && styles.activeToggle]}
+                style={[styles.toggleButton, weight.unit === u && styles.activeToggle]}
               >
-                <Text style={[styles.toggleText, weightUnit === u && styles.activeToggleText]}>
+                <Text style={[styles.toggleText, weight.unit === u && styles.activeToggleText]}>
                   {u}
                 </Text>
               </TouchableOpacity>
@@ -646,10 +564,10 @@ export default function EditProfileScreen() {
           </View>
           <View style={styles.pickerContainer}>
             <WheelPicker
-              key={weightUnit}
-              items={weightUnit === 'kg' ? kgItems : lbsItems}
-              selectedValue={Math.round(weightValue)}
-              onValueChange={(v) => setWeightValue(Number(v))}
+              key={weight.unit}
+              items={weight.unit === 'kg' ? kgItems : lbsItems}
+              selectedValue={Math.round(weight.value)}
+              onValueChange={(v) => setField('weight', { ...weight, value: Number(v) })}
             />
           </View>
           <TouchableOpacity
@@ -671,7 +589,7 @@ export default function EditProfileScreen() {
                 key={item}
                 style={styles.sheetOption}
                 onPress={() => {
-                  setActivityTracker(item);
+                  setField('activityTracker', item);
                   activitySheetRef.current?.scrollTo(0);
                 }}
               >
@@ -767,12 +685,11 @@ export default function EditProfileScreen() {
           <TouchableOpacity
             style={styles.sheetButton}
             onPress={() => {
-              const months = dobMonths;
-              const monthNum = months.indexOf(dobMonth) + 1;
+              const monthNum = dobMonths.indexOf(dobMonth) + 1;
               const formattedDetails = `${String(dobDay).padStart(2, '0')} / ${String(
                 monthNum,
               ).padStart(2, '0')} / ${dobYear}`;
-              setDateOfBirth(formattedDetails);
+              setField('dateOfBirth', formattedDetails);
               dobSheetRef.current?.scrollTo(0);
             }}
           >
@@ -781,35 +698,32 @@ export default function EditProfileScreen() {
         </View>
       </BottomSheet>
 
-      {/* Image Action Sheet */}
-      <BottomSheet ref={imageActionSheetRef} snapPoints={snapPoints}>
-        <View style={styles.sheetContent}>
-          <Text style={styles.sheetTitle}>
-            {activeImageType === 'avatar' ? 'Profile Photo' : 'Cover Image'}
-          </Text>
-          <TouchableOpacity
-            style={[styles.sheetOption, { justifyContent: 'center' }]}
-            onPress={() => handleImageAction('update')}
-          >
-            <Text style={styles.sheetOptionText}>Update Picture</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.sheetOption, { justifyContent: 'center' }]}
-            onPress={() => handleImageAction('remove')}
-          >
-            <Text style={[styles.sheetOptionText, { color: '#EF4444' }]}>Remove Picture</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.sheetButton, { backgroundColor: '#333', marginTop: spacing.sm }]}
-            onPress={() => {
-              setActiveImageType(null);
-              imageActionSheetRef.current?.scrollTo(0);
-            }}
-          >
-            <Text style={[styles.sheetButtonText, { color: 'white' }]}>Cancel</Text>
-          </TouchableOpacity>
-        </View>
-      </BottomSheet>
+      {/* Photo Actions Modal */}
+      <Modal
+        visible={photoModalVisible}
+        onClose={() => setPhotoModalVisible(false)}
+        title={activeImageType === 'avatar' ? 'Profile Photo' : 'Cover Image'}
+        message="What would you like to do?"
+        actions={[
+          {
+            label: 'Update Photo',
+            onPress: () => activeImageType && handlePickImage(activeImageType),
+          },
+          ...((activeImageType === 'avatar' ? !!avatarUri : !!coverUri) ? [{
+            label: 'Remove Photo',
+            variant: 'destructive' as const,
+            onPress: () => {
+              if (activeImageType === 'avatar') setField('avatarUri', undefined);
+              else setField('coverUri', undefined);
+            },
+          }] : []),
+          {
+            label: 'Cancel',
+            variant: 'cancel' as const,
+            onPress: () => {},
+          },
+        ]}
+      />
     </ScreenContainer>
   );
 }
@@ -859,6 +773,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border.default,
+    overflow: 'hidden',
   },
   profilePhotoRow: {
     flexDirection: 'row',
@@ -902,6 +817,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: colors.border.default,
+    overflow: 'hidden',
   },
   dashedDivider: {
     height: 1,
@@ -917,7 +833,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    minHeight: 48,
+    paddingVertical: spacing.xs,
   },
   inputLabel: {
     ...typography.presets.bodyMedium,
@@ -925,45 +841,38 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   inputWrapper: {
-    flex: 2,
-    alignItems: 'flex-end',
+    flex: 1.5,
   },
-  customInputContainer: {
+  inputComponentContainer: {
     marginBottom: 0,
-    width: '100%',
   },
-  transparentInputContainer: {
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-    paddingHorizontal: 0,
-    alignItems: 'flex-end',
-  },
-  customInput: {
+  inputComponentInner: {
+    height: 48,
     backgroundColor: '#111',
-    borderRadius: 12,
-    borderWidth: 1,
     borderColor: '#333',
+    borderRadius: 16,
+  },
+  inputComponentText: {
     textAlign: 'right',
-    paddingRight: spacing.md,
-    color: colors.text.primary,
-    width: '100%',
+    ...typography.presets.bodyMedium,
   },
   selectorButton: {
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     backgroundColor: '#111',
     paddingHorizontal: spacing.md,
-    paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: 16,
     borderWidth: 1,
     borderColor: '#333',
-    minWidth: 120,
-    justifyContent: 'flex-end',
-    gap: 8,
   },
   selectorText: {
-    color: colors.text.primary,
     ...typography.presets.bodyMedium,
+    color: colors.text.primary,
+    flex: 1,
+    textAlign: 'right',
+    marginRight: spacing.xs,
   },
   saveButton: {
     backgroundColor: '#ADFA1D',

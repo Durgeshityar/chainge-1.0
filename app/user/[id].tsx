@@ -1,32 +1,39 @@
-
 import { LinearGradient } from 'expo-linear-gradient';
 import { Stack, useLocalSearchParams } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import { ActivityCard } from '@/components/activity/activityCard';
 import { ScreenContainer } from '@/components/layout/ScreenContainer';
 import { PostGrid } from '@/components/profile/PostGrid';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
+import { WingmanCard } from '@/components/profile/WingmanCard';
+import { WingmanSheet } from '@/components/profile/WingmanSheet';
+import { BottomSheet, BottomSheetRef } from '@/components/ui/BottomSheet';
 import { useProfile } from '@/hooks/useProfile';
+import { useAuthStore } from '@/stores/authStore';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
 
+const MOCK_EVENTS = [
+    { id: '1', title: 'Morning Run', time: '06:00 AM', location: 'Central Park', variant: 'purple' as const },
+    { id: '2', title: 'Yoga Session', time: '08:30 AM', location: 'Zen Studio', variant: 'teal' as const },
+    { id: '3', title: 'Evening Hike', time: '05:00 PM', location: 'Sunset Trail', variant: 'red' as const },
+];
+
 export default function UserProfileScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, fromNearby } = useLocalSearchParams<{ id: string; fromNearby?: string }>();
   const { fetchProfile, fetchPosts, isLoading, stats, user } = useProfile();
+  const { profile: viewerProfile } = useAuthStore();
   const [activeTab, setActiveTab] = useState<'posts' | 'events'>('posts');
+  const wingmanSheetRef = useRef<BottomSheetRef>(null);
 
   useEffect(() => {
     if (id) {
       fetchProfile(id);
       fetchPosts(id);
     }
-    return () => {
-      // Optional: clear user or re-fetch current user on unmount?
-      // For now, let the next screen handle fetching what it needs.
-      // But clearing loading state is good practice.
-    };
   }, [id, fetchProfile, fetchPosts]);
 
   if (isLoading && !user) {
@@ -52,7 +59,7 @@ export default function UserProfileScreen() {
   }
 
   return (
-    <ScreenContainer style={{ paddingHorizontal: 0 }} safeAreaEdges={['bottom', 'left', 'right']}>
+    <ScreenContainer style={{ paddingHorizontal: 0 }} safeAreaEdges={['left', 'right']}>
       <Stack.Screen options={{ title: user.username, headerTransparent: true, headerTintColor: '#fff' }} />
 
       <ScrollView
@@ -60,10 +67,17 @@ export default function UserProfileScreen() {
         refreshControl={
           <RefreshControl refreshing={isLoading} onRefresh={() => { if(id) { fetchProfile(id); fetchPosts(id); } }} tintColor={colors.primary} />
         }
-        stickyHeaderIndices={[1]} // Stick the tabs to the top when scrolling
+        stickyHeaderIndices={[fromNearby === 'true' ? 2 : 1]} // Adjust index if WingmanCard is present
       >
         <ProfileHeader />
-        
+
+        <WingmanCard 
+          onPress={() => wingmanSheetRef.current?.scrollTo(-400)} 
+          name={user.name.split(' ')[0]} 
+          viewerName={viewerProfile?.name.split(' ')[0] || 'friend'}
+          isCurrentUser={false}
+        />
+
         <View style={styles.tabsContainer}>
             <View style={styles.tabsWrapper}>
                 <TouchableOpacity 
@@ -79,7 +93,7 @@ export default function UserProfileScreen() {
                     onPress={() => setActiveTab('events')}
                 >
                     <Text style={[styles.tabText, activeTab === 'events' && styles.activeTabText]}>
-                        Events ({user.interests.length > 0 ? 3 : 0}) {/* Mock event count */}
+                        Events ({MOCK_EVENTS.length})
                     </Text>
                 </TouchableOpacity>
             </View>
@@ -89,8 +103,18 @@ export default function UserProfileScreen() {
             {activeTab === 'posts' ? (
                 <PostGrid />
             ) : (
-                <View style={styles.emptyState}>
-                    <Text style={styles.emptyStateText}>{user.name} has no events yet</Text>
+                <View style={styles.eventsList}>
+                    {MOCK_EVENTS.map((event) => (
+                        <View key={event.id} style={styles.eventItemWrapper}>
+                            <ActivityCard
+                                title={event.title}
+                                time={event.time}
+                                location={event.location}
+                                variant={event.variant}
+                                showButton={false}
+                            />
+                        </View>
+                    ))}
                 </View>
             )}
         </View>
@@ -102,6 +126,10 @@ export default function UserProfileScreen() {
         style={styles.bottomGradient}
         pointerEvents="none"
       />
+
+      <BottomSheet ref={wingmanSheetRef} snapPoints={['60%']} backgroundColor="#000">
+        <WingmanSheet />
+      </BottomSheet>
     </ScreenContainer>
   );
 }
@@ -156,6 +184,15 @@ const styles = StyleSheet.create({
     emptyStateText: {
         ...typography.presets.bodyMedium,
         color: colors.text.secondary,
+    },
+    eventsList: {
+        paddingTop: spacing.sm,
+        paddingHorizontal: spacing.md,
+        gap: spacing.md,
+        paddingBottom: spacing.xxl,
+    },
+    eventItemWrapper: {
+        height: 180,
     },
     bottomGradient: {
         position: 'absolute',

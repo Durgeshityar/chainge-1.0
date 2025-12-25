@@ -82,10 +82,6 @@ export const ChatHeader: React.FC<ChatHeaderProps> = ({
 
           <View style={styles.titleContainer}>
             <Text style={styles.title}>{title}</Text>
-            <View style={styles.statusContainer}>
-              <View style={[styles.statusDot, { backgroundColor: isOnline ? '#98ff00' : colors.text.tertiary }]} />
-              <Text style={styles.statusText}>{isOnline ? 'Online' : 'Offline'}</Text>
-            </View>
           </View>
 
           <TouchableOpacity onPress={handleMenuPress} style={styles.iconButton}>
@@ -133,20 +129,5 @@ const styles = StyleSheet.create({
     ...typography.presets.bodyLarge,
     color: colors.text.primary,
     fontWeight: 'bold',
-  },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    marginRight: 4,
-  },
-  statusText: {
-    ...typography.presets.caption,
-    color: colors.text.secondary,
   },
 });

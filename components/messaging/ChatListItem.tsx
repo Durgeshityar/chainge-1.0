@@ -1,17 +1,21 @@
 import { ChatAvatar } from '@/components/messaging/ChatAvatar';
+import { Modal } from '@/components/ui/Modal';
 import { useAuth } from '@/hooks/useAuth';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { ChatType, ChatWithDetails } from '@/types';
 import { format } from 'date-fns';
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Swipeable } from 'react-native-gesture-handler';
-import { EyeIcon, SpeakerXMarkIcon, TrashIcon } from 'react-native-heroicons/outline';
+import { SpeakerWaveIcon, SpeakerXMarkIcon, TrashIcon } from 'react-native-heroicons/outline';
 
 interface ChatListItemProps {
   chat: ChatWithDetails;
   onPress: (chatId: string) => void;
+  onDelete?: (chatId: string) => void;
+  onMuteToggle?: (chatId: string, muted: boolean) => void;
+  isMuted?: boolean;
   unreadCount?: number;
   onSwipeableOpen?: (ref: Swipeable) => void;
   closeSwipeable?: boolean;
@@ -20,11 +24,16 @@ interface ChatListItemProps {
 export const ChatListItem: React.FC<ChatListItemProps> = ({
   chat,
   onPress,
+  onDelete,
+  onMuteToggle,
+  isMuted = false,
   unreadCount = 0,
   onSwipeableOpen,
 }) => {
   const { user } = useAuth();
   const swipeableRef = React.useRef<Swipeable>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [muted, setMuted] = useState(isMuted);
 
   if (!user) return null;
 
@@ -33,7 +42,6 @@ export const ChatListItem: React.FC<ChatListItemProps> = ({
     [chat.participants],
   );
   const primaryUser = participants.find((p) => p?.id !== user.id) || participants[0];
-  const secondaryUser = participants.find((p) => p && p.id !== primaryUser?.id && p.id !== user.id);
   const participantCount = participants.length;
 
   const chatName = useMemo(() => {
@@ -53,40 +61,29 @@ export const ChatListItem: React.FC<ChatListItemProps> = ({
       ? format(new Date(lastMessage?.createdAt || chat.updatedAt), 'h:mm a')
       : '';
 
+  const handleMuteToggle = () => {
+    const newMutedState = !muted;
+    setMuted(newMutedState);
+    onMuteToggle?.(chat.id, newMutedState);
+    swipeableRef.current?.close();
+  };
+
+  const handleDeletePress = () => {
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = () => {
+    onDelete?.(chat.id);
+    swipeableRef.current?.close();
+  };
+
   const renderAvatar = () => {
-    // If it's a group but has < 3 participants, it might technically be a direct chat in logic,
-    // but here we trust isGroup/isMatched flags or participant count.
-    // The snippet logic uses 'variant' prop.
-    // ChatAvatar determines variant by count if not provided.
-    // We can explicitly pass avatars list.
-
-    // Collect all avatars and names
-    // For 1-on-1, primaryUser is the other person.
-    // For direct chat, we usually want the other person's avatar.
-    // For group, we want all participants (excluding self usually, or including?
-    // designs usually show other members).
-    // Let's filter out 'user' (self) from participants list for the avatar display
-    // unless it's a 'Saved Messages' (bipolar? no, self chat).
-    // The 'participants' array in ChatListItem is already:
-    // chat.participants?.map((p) => p.user).filter(Boolean) || []
-    // Then we derive primaryUser (not self).
-
-    // Let's create a list of users to show.
-    // If 1-on-1: [primaryUser]
-    // If Matched: [primaryUser, secondaryUser ?? primaryUser] NO wait.
-    // Matched usually involves 2 specific people.
-    // If Group: participants (minus self).
-
     const usersToShow = participants.filter((p) => p?.id !== user.id);
-    // If usersToShow is empty (self chat?), show self? Or if it's broken data.
-    // Fallback to all participants if empty (maybe self chat)
     const displayUsers = usersToShow.length > 0 ? usersToShow : participants;
 
-    // Map to avatars and names
     const avatarUrls = displayUsers.map((u) => u?.avatarUrl);
     const displayNames = displayUsers.map((u) => u?.name || u?.username);
 
-    // Determine variant override
     let variant: 'single' | 'matched' | 'group' | undefined;
     if (isMatched) variant = 'matched';
     else if (isGroup) variant = 'group';
@@ -97,35 +94,28 @@ export const ChatListItem: React.FC<ChatListItemProps> = ({
         avatars={avatarUrls}
         names={displayNames}
         variant={variant}
-        size={50} // Base size per snippet
+        size={50}
       />
     );
   };
 
-  const renderActions = (_progress: unknown, dragX: unknown, swipeable: { close: () => void }) => {
+  const renderActions = () => {
     return (
       <View style={styles.actionsWrapper}>
         <View style={styles.actionsContainer}>
           <ActionButton
-            icon={<EyeIcon size={20} color={colors.text.primary} />}
-            onPress={() => {
-              // Handle view action
-              swipeableRef.current?.close();
-            }}
-          />
-          <ActionButton
-            icon={<SpeakerXMarkIcon size={20} color={colors.text.primary} />}
-            onPress={() => {
-              // Handle mute action
-              swipeableRef.current?.close();
-            }}
+            icon={
+              muted ? (
+                <SpeakerWaveIcon size={20} color={colors.text.primary} />
+              ) : (
+                <SpeakerXMarkIcon size={20} color={colors.text.primary} />
+              )
+            }
+            onPress={handleMuteToggle}
           />
           <ActionButton
             icon={<TrashIcon size={20} color={colors.status.error} />}
-            onPress={() => {
-              // Handle delete action
-              swipeableRef.current?.close();
-            }}
+            onPress={handleDeletePress}
             isDestructive
           />
         </View>
@@ -134,42 +124,68 @@ export const ChatListItem: React.FC<ChatListItemProps> = ({
   };
 
   return (
-    <Swipeable
-      ref={swipeableRef}
-      renderRightActions={renderActions}
-      overshootRight={false}
-      onSwipeableOpen={() => onSwipeableOpen?.(swipeableRef.current!)}
-      containerStyle={styles.swipeableContainer}
-    >
-      <TouchableOpacity
-        style={styles.container}
-        onPress={() => onPress(chat.id)}
-        activeOpacity={0.9}
+    <>
+      <Swipeable
+        ref={swipeableRef}
+        renderRightActions={renderActions}
+        overshootRight={false}
+        onSwipeableOpen={() => onSwipeableOpen?.(swipeableRef.current!)}
+        containerStyle={styles.swipeableContainer}
       >
-        <View style={styles.avatarContainer}>{renderAvatar()}</View>
+        <TouchableOpacity
+          style={styles.container}
+          onPress={() => onPress(chat.id)}
+          activeOpacity={0.9}
+        >
+          <View style={styles.avatarContainer}>{renderAvatar()}</View>
 
-        <View style={styles.content}>
-          <View style={styles.header}>
-            <Text style={styles.name} numberOfLines={1}>
-              {chatName}
-            </Text>
-            <View style={styles.metaRight}>
-              {unreadCount > 0 && <View style={styles.statusDot} />}
-              <Text style={styles.time}>{timeDisplay}</Text>
+          <View style={styles.content}>
+            <View style={styles.header}>
+              <View style={styles.nameContainer}>
+                <Text style={styles.name} numberOfLines={1}>
+                  {chatName}
+                </Text>
+                {muted && (
+                  <SpeakerXMarkIcon size={14} color={colors.text.tertiary} style={styles.mutedIcon} />
+                )}
+              </View>
+              <View style={styles.metaRight}>
+                {unreadCount > 0 && <View style={styles.statusDot} />}
+                <Text style={styles.time}>{timeDisplay}</Text>
+              </View>
+            </View>
+
+            <View style={styles.footer}>
+              <Text
+                style={[styles.message, unreadCount > 0 && styles.messageUnread]}
+                numberOfLines={1}
+              >
+                {messagePreview}
+              </Text>
             </View>
           </View>
+        </TouchableOpacity>
+      </Swipeable>
 
-          <View style={styles.footer}>
-            <Text
-              style={[styles.message, unreadCount > 0 && styles.messageUnread]}
-              numberOfLines={1}
-            >
-              {messagePreview}
-            </Text>
-          </View>
-        </View>
-      </TouchableOpacity>
-    </Swipeable>
+      <Modal
+        visible={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        title="Delete Conversation"
+        message={`Are you sure you want to delete your conversation with ${chatName}? This action cannot be undone.`}
+        actions={[
+          {
+            label: 'Delete',
+            onPress: handleConfirmDelete,
+            variant: 'destructive',
+          },
+          {
+            label: 'Cancel',
+            onPress: () => {},
+            variant: 'cancel',
+          },
+        ]}
+      />
+    </>
   );
 };
 
@@ -198,16 +214,14 @@ const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: colors.background.charcoal, // Dark grey card background
-    height: 88, // Fixed height
+    backgroundColor: colors.background.charcoal,
+    height: 88,
     paddingHorizontal: 18,
     borderRadius: 24,
-
-    // gap: 16, // Using margin on avatarContainer for more control
   },
   avatarContainer: {
     width: 80,
-    marginRight: 14, // Consistent spacing
+    marginRight: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -223,18 +237,26 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 6,
   },
+  nameContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 8,
+  },
   footer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
   name: {
-    ...typography.presets.bodyMedium, // Use valid preset
+    ...typography.presets.bodyMedium,
     color: colors.text.primary,
-    flex: 1,
-    marginRight: 8,
     fontWeight: '700',
     fontSize: 17,
+    flexShrink: 1,
+  },
+  mutedIcon: {
+    marginLeft: 6,
   },
   time: {
     ...typography.presets.labelSmall,
@@ -243,7 +265,7 @@ const styles = StyleSheet.create({
   },
   message: {
     ...typography.presets.bodyMedium,
-    color: colors.text.tertiary, // More subtle
+    color: colors.text.tertiary,
     flex: 1,
     marginRight: 8,
   },
@@ -265,9 +287,9 @@ const styles = StyleSheet.create({
 
   // Actions Styles
   actionsWrapper: {
-    width: 180, // Fixed width for actions
-    height: 88, // Match card height
-    paddingLeft: 12, // Gap between card and actions
+    width: 130,
+    height: 88,
+    paddingLeft: 12,
     justifyContent: 'center',
   },
   actionsContainer: {
@@ -275,7 +297,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-evenly',
     alignItems: 'center',
-    backgroundColor: '#1A1A1A', // Darker background for actions card
+    backgroundColor: '#1A1A1A',
     borderRadius: 24,
     borderWidth: 1,
     borderColor: '#333',

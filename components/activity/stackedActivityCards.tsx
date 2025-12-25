@@ -5,7 +5,7 @@ import { Text, View } from 'react-native';
 import { ActivityCard } from './activityCard';
 import { ActivityStack } from './activityStack';
 
-export const StackedActivityCards = () => {
+export const StackedActivityCards = ({ onViewActivity }: { onViewActivity: (activity: any) => void }) => {
   const scheduledActivities = useActivityStore((state) => state.scheduledActivities);
 
   const formatTime = (date: Date | null | undefined) => {
@@ -40,10 +40,11 @@ export const StackedActivityCards = () => {
             time={formatTime(activity.scheduledAt)}
             location={activity.locationName || 'Unknown Location'}
             variant={orderedVariantKeys[idx % orderedVariantKeys.length]}
+            onPress={() => onViewActivity(activity)}
         />
         ),
     }));
-  }, [scheduledActivities]);
+  }, [scheduledActivities, onViewActivity]);
 
   if (activityItems.length === 0) {
       return (

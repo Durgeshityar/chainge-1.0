@@ -1,5 +1,6 @@
 import { SummaryCard } from '@/components/activity/SummaryCard';
 import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
 import { useActivityStore } from '@/stores/activityStore';
 import { colors } from '@/theme/colors';
 import { spacing } from '@/theme/spacing';
@@ -8,7 +9,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import { useState } from 'react';
 import {
-    Alert,
+    Image,
     ScrollView,
     StyleSheet,
     Text,
@@ -29,12 +30,14 @@ const THEME_COLORS = [
 
 const SummaryScreen = () => {
   const router = useRouter();
-  const { lastSummary, currentSession, resetActivity } = useActivityStore();
+  const { lastSummary, currentSession, resetActivity, tempMusicSelection, setMusicSelection } = useActivityStore();
   
   const [caption, setCaption] = useState('');
   const [backgroundImage, setBackgroundImage] = useState<string | null>(null);
   const [themeColor, setThemeColor] = useState<string | null>(null);
   const [isPublishing, setIsPublishing] = useState(false);
+  const [showPublishedModal, setShowPublishedModal] = useState(false);
+  const [showDiscardModal, setShowDiscardModal] = useState(false);
 
   if (!lastSummary || !currentSession) {
     // Should typically not happen if we navigate correctly, but handle gracefully
@@ -66,25 +69,18 @@ const SummaryScreen = () => {
     // Simulate API call
     setTimeout(() => {
         setIsPublishing(false);
-        resetActivity();
-        Alert.alert('Published!', 'Your activity has been shared.', [
-            { text: 'OK', onPress: () => router.replace('/(tabs)') }
-        ]);
+        setShowPublishedModal(true);
     }, 1500);
   };
 
   const handleDiscard = () => {
-    Alert.alert('Discard Activity?', 'This cannot be undone.', [
-        { text: 'Cancel', style: 'cancel'},
-        { 
-            text: 'Discard', 
-            style: 'destructive', 
-            onPress: () => {
-                resetActivity();
-                router.replace('/(tabs)');
-            }
-        }
-    ]);
+    setShowDiscardModal(true);
+  };
+
+  const confirmDiscard = () => {
+    resetActivity();
+    setMusicSelection(null);
+    router.replace('/(tabs)');
   };
 
   const handleSaveDraft = () => {
@@ -136,6 +132,13 @@ const SummaryScreen = () => {
                     <Ionicons name="image-outline" size={24} color="#fff" />
                 </TouchableOpacity>
 
+                <TouchableOpacity 
+                    style={[styles.addImageBtn, !!tempMusicSelection && styles.activeMusicBtn]} 
+                    onPress={() => router.push('/activity/music-picker')}
+                >
+                    <Ionicons name="musical-notes-outline" size={24} color={tempMusicSelection ? "#000" : "#fff"} />
+                </TouchableOpacity>
+
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.colorScroll}>
                     {THEME_COLORS.map((color) => (
                         <TouchableOpacity 
@@ -154,6 +157,24 @@ const SummaryScreen = () => {
                 </ScrollView>
             </View>
         </View>
+
+        {/* Music Display */}
+        {tempMusicSelection && (
+            <View style={styles.musicCard}>
+                <Image source={{ uri: tempMusicSelection.coverUrl }} style={styles.musicCover} />
+                <View style={styles.musicInfo}>
+                    <Text style={styles.musicTitle}>{tempMusicSelection.title}</Text>
+                    <Text style={styles.musicArtist}>{tempMusicSelection.artist}</Text>
+                    <Text style={styles.musicTime}>
+                        {Math.floor(Math.round(tempMusicSelection.startTime) / 60)}:{(Math.round(tempMusicSelection.startTime) % 60).toString().padStart(2, '0')} - 
+                        {Math.floor(Math.round(tempMusicSelection.endTime) / 60)}:{(Math.round(tempMusicSelection.endTime) % 60).toString().padStart(2, '0')}
+                    </Text>
+                </View>
+                <TouchableOpacity onPress={() => setMusicSelection(null)}>
+                    <Ionicons name="close-circle" size={24} color={colors.text.secondary} />
+                </TouchableOpacity>
+            </View>
+        )}
 
       </ScrollView>
 
@@ -175,6 +196,43 @@ const SummaryScreen = () => {
             />
          </View>
       </View>
+
+      {/* Published Success Modal */}
+      <Modal
+        visible={showPublishedModal}
+        onClose={() => setShowPublishedModal(false)}
+        title="Published! 🎉"
+        message="Your activity has been shared with your followers."
+        actions={[
+          {
+            label: 'View Feed',
+            onPress: () => {
+              resetActivity();
+              router.replace('/(tabs)');
+            },
+          },
+        ]}
+      />
+
+      {/* Discard Confirmation Modal */}
+      <Modal
+        visible={showDiscardModal}
+        onClose={() => setShowDiscardModal(false)}
+        title="Discard Activity?"
+        message="This cannot be undone. Your session data will be lost."
+        actions={[
+          {
+            label: 'Discard',
+            variant: 'destructive',
+            onPress: confirmDiscard,
+          },
+          {
+            label: 'Cancel',
+            variant: 'cancel',
+            onPress: () => {},
+          },
+        ]}
+      />
     </SafeAreaView>
   );
 };
@@ -252,6 +310,43 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#444',
+  },
+  activeMusicBtn: {
+      backgroundColor: '#fff',
+      borderColor: '#fff',
+  },
+  musicCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: '#1A1A1A',
+      padding: spacing.sm,
+      borderRadius: 8,
+      marginTop: spacing.md,
+      borderLeftWidth: 3,
+      borderLeftColor: colors.primary,
+  },
+  musicCover: {
+      width: 40,
+      height: 40,
+      borderRadius: 4,
+      marginRight: spacing.md,
+  },
+  musicInfo: {
+      flex: 1,
+  },
+  musicTitle: {
+      color: '#fff',
+      fontSize: 14,
+      fontWeight: '600',
+  },
+  musicArtist: {
+      color: '#888',
+      fontSize: 12,
+  },
+  musicTime: {
+      color: colors.primary,
+      fontSize: 10,
+      marginTop: 2,
   },
   colorScroll: {
     gap: spacing.md,

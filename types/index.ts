@@ -77,6 +77,7 @@ export interface User extends Omit<BaseEntity, 'updatedAt'> {
   age?: number; // Added for profile
   location?: string; // Added for profile
   activityTracker?: string;
+  dateOfBirth?: string;
 }
 
 export type UserCreateInput = Omit<

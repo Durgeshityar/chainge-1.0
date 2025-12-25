@@ -64,7 +64,14 @@ export const useProfile = () => {
   }, [adapters]);
   
   const toggleFollow = useCallback(async () => {
-       console.log('Toggle follow not implemented yet');
+    const state = useProfileStore.getState();
+    const isNowFollowing = !state.isFollowing;
+    
+    state.setIsFollowing(isNowFollowing);
+    state.setStats({
+      ...state.stats,
+      followers: state.stats.followers + (isNowFollowing ? 1 : -1)
+    });
   }, []);
 
   return {
