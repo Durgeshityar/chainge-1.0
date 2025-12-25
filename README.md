@@ -48,3 +48,16 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+
+## Supabase Authentication Setup
+
+The adapter layer now includes a Supabase-auth implementation. Configure these environment variables (e.g., in an `.env` file or via your shell) before running the app:
+
+```bash
+export EXPO_PUBLIC_SUPABASE_URL="https://YOUR-PROJECT.supabase.co"
+export EXPO_PUBLIC_SUPABASE_ANON_KEY="YOUR_ANON_KEY"
+# Optional: override the redirect if you use a custom deep link
+export EXPO_PUBLIC_SUPABASE_REDIRECT_URL="chainge://auth-callback"
+```
+
+The Expo config already declares the `chainge` scheme; update it if you change the redirect URL. Once the remaining Supabase adapters (database, storage, realtime) are implemented you can enable the Supabase backend by rendering `AdapterProvider` with `provider="supabase"`.
