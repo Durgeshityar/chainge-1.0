@@ -3,11 +3,12 @@ import { AuthScreen } from '@/components/auth/AuthScreen';
 import { AuthSocialButtons } from '@/components/auth/SocialButtons';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
+import { useOnboardingStore } from '@/stores/onboardingStore';
 import { colors } from '@/theme/colors';
 import { typography } from '@/theme/typography';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { z } from 'zod';
@@ -38,6 +39,13 @@ type SignupFormData = z.infer<typeof signupSchema>;
 export default function SignUpScreen() {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
+  const setCredentials = useOnboardingStore((state) => state.setCredentials);
+  const resetOnboarding = useOnboardingStore((state) => state.reset);
+
+  useEffect(() => {
+    // Clear any stale onboarding data whenever the signup screen mounts
+    resetOnboarding();
+  }, [resetOnboarding]);
 
   const {
     control,
@@ -58,8 +66,7 @@ export default function SignUpScreen() {
   const onSubmit = async (data: SignupFormData) => {
     setIsLoading(true);
     try {
-      // TODO: Implement actual signup logic with auth adapter
-      console.log('Sign up with:', data);
+      setCredentials(data.email.trim().toLowerCase(), data.password);
       router.replace('/(auth)/onboarding');
     } catch (error) {
       console.error('Sign up error:', error);

@@ -14,11 +14,14 @@ import type {
 } from '@/adapters/types';
 import type { User, UserCreateInput } from '@/types';
 
+export type SignUpProfileInput = Partial<Omit<UserCreateInput, 'email' | 'username'>>;
+
 export interface SignUpData {
   email: string;
   password: string;
   username: string;
   displayName?: string;
+  profile?: SignUpProfileInput;
 }
 
 export interface SignInData {
@@ -45,11 +48,12 @@ export class AuthService {
    * Creates both an auth user and a user profile
    */
   async signUp(data: SignUpData): Promise<AuthServiceResult> {
-    const { email, password, username, displayName } = data;
+    const { email, password, username, displayName, profile } = data;
+    const normalizedUsername = username.trim().toLowerCase();
 
     // First, check if username is available
     const existingUsers = await this.database.query('user', [
-      { field: 'username', operator: 'eq', value: username.toLowerCase() },
+      { field: 'username', operator: 'eq', value: normalizedUsername },
     ]);
 
     if (existingUsers.length > 0) {
@@ -77,15 +81,25 @@ export class AuthService {
     // Create user profile
     try {
       const userInput: UserCreateInput = {
-        email: email.toLowerCase(),
-        username: username.toLowerCase(),
-        name: displayName ?? username, // Initialize required name
-        displayName: displayName ?? null,
-        bio: null,
-        avatarUrl: null,
-        interests: [],
-        latitude: null,
-        longitude: null,
+        email: email.trim().toLowerCase(),
+        username: normalizedUsername,
+        name: profile?.name ?? displayName ?? normalizedUsername,
+        displayName: profile?.displayName ?? displayName ?? null,
+        bio: profile?.bio ?? null,
+        avatarUrl: profile?.avatarUrl ?? null,
+        interests: profile?.interests ?? [],
+        latitude: profile?.latitude ?? null,
+        longitude: profile?.longitude ?? null,
+        followerCount: profile?.followerCount ?? 0,
+        followingCount: profile?.followingCount ?? 0,
+        coverImage: profile?.coverImage,
+        gender: profile?.gender,
+        height: profile?.height,
+        weight: profile?.weight,
+        age: profile?.age,
+        location: profile?.location,
+        activityTracker: profile?.activityTracker,
+        dateOfBirth: profile?.dateOfBirth,
       };
 
       const user = await this.database.create('user', {

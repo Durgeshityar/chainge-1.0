@@ -18,6 +18,7 @@ interface OnboardingLayoutProps {
   onSkip?: () => void;
   nextLabel?: string;
   nextDisabled?: boolean;
+  nextIsLoading?: boolean;
   showSkip?: boolean;
   showBack?: boolean;
 }
@@ -32,6 +33,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
   onSkip,
   nextLabel = 'Next',
   nextDisabled = false,
+  nextIsLoading = false,
   showSkip = true,
   showBack = true,
 }) => {
@@ -89,7 +91,8 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
                 variant="primary"
                 size="lg"
                 onPress={onNext}
-                disabled={nextDisabled}
+                disabled={nextDisabled || nextIsLoading}
+                isLoading={nextIsLoading}
                 style={styles.nextButton}
                 title={nextLabel}
               />
