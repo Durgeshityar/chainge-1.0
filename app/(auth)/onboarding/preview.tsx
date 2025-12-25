@@ -21,6 +21,7 @@ export default function PreviewScreen() {
     gender,
     birthday,
     height,
+    weight,
     activityTracker,
     coverImage,
     interests,
