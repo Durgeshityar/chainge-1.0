@@ -13,11 +13,9 @@ import { MockDatabaseAdapter } from './mock/databaseAdapter';
 import { MockRealtimeAdapter } from './mock/realtimeAdapter';
 import { MockStorageAdapter } from './mock/storageAdapter';
 import { SupabaseAuthAdapter } from './supabase/authAdapter';
-import {
-  supabaseDatabasePlaceholder,
-  supabaseRealtimePlaceholder,
-  supabaseStoragePlaceholder,
-} from './supabase/placeholders';
+import { SupabaseDatabaseAdapter } from './supabase/databaseAdapter';
+import { SupabaseRealtimeAdapter } from './supabase/realtimeAdapter';
+import { SupabaseStorageAdapter } from './supabase/storageAdapter';
 import type {
   Adapters,
   IAuthAdapter,
@@ -103,23 +101,14 @@ export function createMockAdapters(config: AdapterConfig = {}): Adapters {
 }
 
 /**
- * Create Supabase adapters (to be implemented in Phase 16)
+ * Create Supabase adapters.
  */
-let warnedAboutSupabaseAdapters = false;
-
 export function createSupabaseAdapters(_config: AdapterConfig = {}): Adapters {
-  if (!warnedAboutSupabaseAdapters) {
-    console.warn(
-      '[AdapterProvider] Supabase auth adapter is available, but database, storage, and realtime adapters are still TODO.',
-    );
-    warnedAboutSupabaseAdapters = true;
-  }
-
   return {
     auth: new SupabaseAuthAdapter(),
-    database: supabaseDatabasePlaceholder,
-    storage: supabaseStoragePlaceholder,
-    realtime: supabaseRealtimePlaceholder,
+    database: new SupabaseDatabaseAdapter(),
+    storage: new SupabaseStorageAdapter(),
+    realtime: new SupabaseRealtimeAdapter(),
   };
 }
 

@@ -131,20 +131,24 @@ export class AuthService {
     }
 
     // Fetch user profile
-    const user = await this.database.get('user', authResult.user.id);
+    let user = await this.database.get('user', authResult.user.id);
 
     if (!user) {
-      // User profile doesn't exist, sign out
-      await this.auth.signOut();
+      try {
+        user = await this.createProfileFromAuthUser(authResult.user);
+      } catch (error) {
+        console.error('Failed to create profile for auth user', error);
+        await this.auth.signOut();
 
-      return {
-        user: null,
-        authUser: null,
-        error: {
-          code: 'profile_not_found',
-          message: 'User profile not found',
-        },
-      };
+        return {
+          user: null,
+          authUser: null,
+          error: {
+            code: 'profile_not_found',
+            message: 'User profile not found',
+          },
+        };
+      }
     }
 
     return {
@@ -273,6 +277,59 @@ export class AuthService {
     if (!authUser) return null;
 
     return this.database.get('user', authUser.id);
+  }
+
+  /**
+   * Create a user profile for an auth-only user (e.g., Supabase signup without profile row)
+   */
+  private async createProfileFromAuthUser(authUser: AuthUser): Promise<User> {
+    const baseUsername = authUser.email?.split('@')[0] ?? '';
+    const sanitizedBase = baseUsername.toLowerCase().replace(/[^a-z0-9_]/g, '');
+    const username = await this.generateUniqueUsername(sanitizedBase, authUser.id);
+
+    const userInput: UserCreateInput = {
+      email: authUser.email,
+      username,
+      name: username,
+      displayName: username,
+      bio: null,
+      avatarUrl: null,
+      interests: [],
+      latitude: null,
+      longitude: null,
+      followerCount: 0,
+      followingCount: 0,
+    };
+
+    return this.database.create('user', {
+      ...userInput,
+      id: authUser.id,
+    });
+  }
+
+  private async generateUniqueUsername(base: string, fallbackId: string): Promise<string> {
+    const normalizedBase = base || `user_${fallbackId.slice(0, 6)}`;
+    let candidate = normalizedBase;
+    let counter = 1;
+
+    while (await this.isUsernameTaken(candidate)) {
+      candidate = `${normalizedBase}${counter}`;
+      counter += 1;
+
+      if (counter > 50) {
+        candidate = `user_${fallbackId.slice(0, 8)}`;
+        break;
+      }
+    }
+
+    return candidate;
+  }
+
+  private async isUsernameTaken(username: string): Promise<boolean> {
+    const existing = await this.database.query('user', [
+      { field: 'username', operator: 'eq', value: username },
+    ]);
+    return existing.length > 0;
   }
 
   /**
