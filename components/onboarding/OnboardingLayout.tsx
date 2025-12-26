@@ -4,7 +4,17 @@ import { spacing } from '@/theme/spacing';
 import { typography } from '@/theme/typography';
 import { useRouter } from 'expo-router';
 import React from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  Keyboard,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  TouchableWithoutFeedback,
+  View,
+} from 'react-native';
 import { ArrowLeftIcon } from 'react-native-heroicons/outline';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -51,75 +61,53 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
   const progress = (currentStep / totalSteps) * 100;
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        style={styles.keyboardAvoidingView}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
-      >
-        <View style={styles.header}>
-          {showBack ? (
-            <TouchableOpacity onPress={handleBack} style={styles.backButton}>
-              <ArrowLeftIcon size={24} color={colors.text.secondary} />
-            </TouchableOpacity>
-          ) : (
-            <View style={styles.backButtonPlaceholder} />
-          )}
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss} accessible={false}>
+      <SafeAreaView style={styles.container}>
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoidingView}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        >
+          <View style={styles.header}>
+            {showBack ? (
+              <TouchableOpacity onPress={handleBack} style={styles.backButton}>
+                <ArrowLeftIcon size={24} color={colors.text.secondary} />
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.backButtonPlaceholder} />
+            )}
 
-          <View style={styles.progressBarContainer}>
-            <View style={[styles.progressBar, { width: `${progress}%` }]} />
+            <View style={styles.progressBarContainer}>
+              <View style={[styles.progressBar, { width: `${progress}%` }]} />
+            </View>
+
+            <View style={styles.headerRightPlaceholder} />
           </View>
 
-          <View style={styles.headerRightPlaceholder} />
-        </View>
-
-        {scrollable ? (
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={styles.content}>
-              {title && <Text style={styles.title}>{title}</Text>}
-              {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
-              {children}
-            </View>
-          </ScrollView>
-        ) : (
-          <View style={[styles.scrollView, styles.scrollContent]}>
-            <View style={styles.content}>
-              {title && <Text style={styles.title}>{title}</Text>}
-              {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
-              {children}
-            </View>
-          </View>
-        )}
-
-        <View style={styles.footer}>
-          {showSkip ? (
-            <TouchableOpacity onPress={onSkip} style={styles.skipButton}>
-              <Text style={styles.skipText}>Skip</Text>
-            </TouchableOpacity>
+          {scrollable ? (
+            <ScrollView
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              showsVerticalScrollIndicator={false}
+            >
+              <View style={styles.content}>
+                {title && <Text style={styles.title}>{title}</Text>}
+                {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+                {children}
+              </View>
+            </ScrollView>
           ) : (
-            <View style={styles.skipPlaceholder} />
+            <View style={[styles.scrollView, styles.scrollContent]}>
+              <View style={styles.content}>
+                {title && <Text style={styles.title}>{title}</Text>}
+                {subtitle && <Text style={styles.subtitle}>{subtitle}</Text>}
+                {children}
+              </View>
+            </View>
           )}
 
-<<<<<<< HEAD
-          {onNext && (
-            <Button
-              variant="primary"
-              size="lg"
-              onPress={onNext}
-              disabled={nextDisabled}
-              style={styles.nextButton}
-              title={nextLabel}
-            />
-          )}
-        </View>
-      </KeyboardAvoidingView>
-=======
           <View style={styles.footer}>
             {showSkip ? (
               <TouchableOpacity onPress={onSkip} style={styles.skipButton}>
@@ -128,7 +116,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
             ) : (
               <View style={styles.skipPlaceholder} />
             )}
-            
+
             {onNext && (
               <Button
                 variant="primary"
@@ -142,9 +130,8 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
             )}
           </View>
         </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
->>>>>>> abhijay/dev
-    </SafeAreaView>
+      </SafeAreaView>
+    </TouchableWithoutFeedback>
   );
 };
 

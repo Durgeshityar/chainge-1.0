@@ -9,7 +9,13 @@ import type {
   QueryOptions,
 } from '@/adapters/types';
 import { getSupabaseClient } from './client';
-import { getTableName, hydrateDates } from './utils';
+import {
+  convertKeysToCamelCase,
+  convertKeysToSnakeCase,
+  getTableName,
+  hydrateDates,
+  toSnakeCase,
+} from './utils';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 const DEFAULT_PAGE_SIZE = 20;
@@ -23,30 +29,31 @@ function applyFilters(query: any, filters?: Filter[]): any {
 
   return filters.reduce((builder, filter) => {
     const value = filter.value as any;
+    const field = toSnakeCase(filter.field);
     switch (filter.operator) {
       case 'eq':
-        return builder.eq(filter.field, value);
+        return builder.eq(field, value);
       case 'neq':
-        return builder.neq(filter.field, value);
+        return builder.neq(field, value);
       case 'gt':
-        return builder.gt(filter.field, value);
+        return builder.gt(field, value);
       case 'gte':
-        return builder.gte(filter.field, value);
+        return builder.gte(field, value);
       case 'lt':
-        return builder.lt(filter.field, value);
+        return builder.lt(field, value);
       case 'lte':
-        return builder.lte(filter.field, value);
+        return builder.lte(field, value);
       case 'in':
-        return Array.isArray(value) ? builder.in(filter.field, value) : builder;
+        return Array.isArray(value) ? builder.in(field, value) : builder;
       case 'contains':
         if (typeof value === 'string') {
-          return builder.ilike(filter.field, `%${value}%`);
+          return builder.ilike(field, `%${value}%`);
         }
-        return builder.contains(filter.field, value);
+        return builder.contains(field, value);
       case 'startsWith':
-        return builder.ilike(filter.field, `${value}%`);
+        return builder.ilike(field, `${value}%`);
       case 'endsWith':
-        return builder.ilike(filter.field, `%${value}`);
+        return builder.ilike(field, `%${value}`);
       default:
         return builder;
     }
@@ -55,21 +62,22 @@ function applyFilters(query: any, filters?: Filter[]): any {
 
 function applyOrder(query: any, orderBy?: OrderBy[]): any {
   if (!orderBy || orderBy.length === 0) {
-    return query.order('createdAt', { ascending: false });
+    return query.order('created_at', { ascending: false });
   }
 
   return orderBy.reduce(
-    (builder, order) => builder.order(order.field, { ascending: order.direction !== 'desc', nullsFirst: false }),
+    (builder, order) =>
+      builder.order(toSnakeCase(order.field), { ascending: order.direction !== 'desc', nullsFirst: false }),
     query,
   );
 }
 
-function toDateHydratedRecords<M extends ModelName>(records?: ModelTypeMap[M][] | null): ModelTypeMap[M][] {
+function mapRecords<M extends ModelName>(records?: ModelTypeMap[M][] | null): ModelTypeMap[M][] {
   if (!records) {
     return [];
   }
 
-  return records.map((record) => hydrateDates(record));
+  return records.map((record) => hydrateDates(convertKeysToCamelCase(record)) as ModelTypeMap[M]);
 }
 
 export class SupabaseDatabaseAdapter implements IDatabaseAdapter {
@@ -103,7 +111,7 @@ export class SupabaseDatabaseAdapter implements IDatabaseAdapter {
       throw error;
     }
 
-    return data ? (hydrateDates(data) as ModelTypeMap[M]) : null;
+    return data ? (hydrateDates(convertKeysToCamelCase(data)) as ModelTypeMap[M]) : null;
   }
 
   async list<M extends ModelName>(model: M, options?: QueryOptions): Promise<ModelTypeMap[M][]> {
@@ -121,7 +129,7 @@ export class SupabaseDatabaseAdapter implements IDatabaseAdapter {
       throw error;
     }
 
-    return toDateHydratedRecords<M>(data as ModelTypeMap[M][] | null);
+    return mapRecords<M>(data as ModelTypeMap[M][] | null);
   }
 
   async create<M extends ModelName>(
@@ -129,13 +137,17 @@ export class SupabaseDatabaseAdapter implements IDatabaseAdapter {
     data: Partial<ModelTypeMap[M]>,
   ): Promise<ModelTypeMap[M]> {
     const table = getTableName(model);
-    const { data: result, error } = await this.supabase.from(table).insert(data).select('*').single();
+    const { data: result, error } = await this.supabase
+      .from(table)
+      .insert(convertKeysToSnakeCase(data))
+      .select('*')
+      .single();
 
     if (error) {
       throw error;
     }
 
-    return hydrateDates(result) as ModelTypeMap[M];
+    return hydrateDates(convertKeysToCamelCase(result)) as ModelTypeMap[M];
   }
 
   async update<M extends ModelName>(
@@ -144,13 +156,18 @@ export class SupabaseDatabaseAdapter implements IDatabaseAdapter {
     data: Partial<ModelTypeMap[M]>,
   ): Promise<ModelTypeMap[M]> {
     const table = getTableName(model);
-    const { data: result, error } = await this.supabase.from(table).update(data).eq('id', id).select('*').single();
+    const { data: result, error } = await this.supabase
+      .from(table)
+      .update(convertKeysToSnakeCase(data))
+      .eq('id', id)
+      .select('*')
+      .single();
 
     if (error) {
       throw error;
     }
 
-    return hydrateDates(result) as ModelTypeMap[M];
+    return hydrateDates(convertKeysToCamelCase(result)) as ModelTypeMap[M];
   }
 
   async delete(model: ModelName, id: string): Promise<void> {
@@ -170,7 +187,7 @@ export class SupabaseDatabaseAdapter implements IDatabaseAdapter {
       throw error;
     }
 
-    return toDateHydratedRecords<M>(data as ModelTypeMap[M][] | null);
+    return mapRecords<M>(data as ModelTypeMap[M][] | null);
   }
 
   async queryNearby<M extends ModelName>(

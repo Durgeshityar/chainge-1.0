@@ -31,7 +31,8 @@ export default function PreviewScreen() {
   const { signUp, isLoading, error } = useAuth();
   const [localError, setLocalError] = useState<string | null>(null);
 
-  const age = calculateAge(birthday);
+  const normalizedBirthDate = formatBirthdayISO(birthday);
+  const age = calculateAge(normalizedBirthDate);
   const locationLabel = 'Mumbai'; // TODO: integrate actual location selection when implemented
   const genderAgeLabel = [gender, age ? `${age} yrs` : null].filter(Boolean).join(', ');
   const formattedHeight = formatHeight(height.value, height.unit);
@@ -59,12 +60,23 @@ export default function PreviewScreen() {
       coverImage: coverImage ?? undefined,
       interests,
       gender: gender || undefined,
-      dateOfBirth: birthday || undefined,
+      dateOfBirth: normalizedBirthDate,
       age,
       activityTracker: activityTracker || undefined,
       height: formattedHeight,
       weight: formattedWeight,
     };
+
+    console.log('[Onboarding] Submitting preview payload:', {
+      email,
+      username,
+      gender,
+      profilePicture,
+      coverImage,
+      interests,
+      formattedHeight,
+      formattedWeight,
+    });
 
     const result = await signUp({
       email,
@@ -75,6 +87,7 @@ export default function PreviewScreen() {
     });
 
     if (!result || result.error) {
+      console.error('[Onboarding] Sign up failed:', result?.error);
       setLocalError(result?.error?.message ?? 'Failed to create your account. Please try again.');
       return;
     }
@@ -91,12 +104,9 @@ export default function PreviewScreen() {
       onNext={handleNext}
       nextLabel="Start"
       showSkip={false}
-<<<<<<< HEAD
       scrollable={false}
-=======
       nextDisabled={isLoading}
       nextIsLoading={isLoading}
->>>>>>> abhijay/dev
     >
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -190,12 +200,12 @@ export default function PreviewScreen() {
   );
 }
 
-function calculateAge(birthday: string): number | undefined {
-  if (!birthday) {
+function calculateAge(birthdayISO?: string): number | undefined {
+  if (!birthdayISO) {
     return undefined;
   }
 
-  const birthDate = new Date(birthday);
+  const birthDate = new Date(birthdayISO);
   if (Number.isNaN(birthDate.getTime())) {
     return undefined;
   }
@@ -209,6 +219,32 @@ function calculateAge(birthday: string): number | undefined {
   }
 
   return age >= 0 ? age : undefined;
+}
+
+function formatBirthdayISO(rawBirthday: string): string | undefined {
+  const parsed = parseBirthdayInput(rawBirthday);
+  if (!parsed) {
+    return undefined;
+  }
+
+  return parsed.toISOString().split('T')[0];
+}
+
+function parseBirthdayInput(raw: string): Date | null {
+  if (!raw) {
+    return null;
+  }
+
+  const cleaned = raw.replace(/\s/g, '');
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(cleaned)) {
+    const [day, month, year] = cleaned.split('/');
+    const iso = `${year}-${month}-${day}`;
+    const date = new Date(iso);
+    return Number.isNaN(date.getTime()) ? null : date;
+  }
+
+  const date = new Date(raw);
+  return Number.isNaN(date.getTime()) ? null : date;
 }
 
 function formatHeight(value: number, unit: 'cm' | 'ft'): string | undefined {

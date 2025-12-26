@@ -64,3 +64,47 @@ export function hydrateDates<T extends Record<string, any>>(record: T): T {
 
   return result as T;
 }
+
+const CAMEL_TO_SNAKE_REGEX = /([a-z0-9])([A-Z])/g;
+const SNAKE_TO_CAMEL_REGEX = /_([a-z0-9])/g;
+
+export const toSnakeCase = (value: string): string =>
+  value
+    .replace(CAMEL_TO_SNAKE_REGEX, '$1_$2')
+    .replace(/-/g, '_')
+    .toLowerCase();
+
+const toCamelCase = (value: string): string =>
+  value.replace(SNAKE_TO_CAMEL_REGEX, (_, char: string) => char.toUpperCase());
+
+export function convertKeysToSnakeCase<T>(input: T): T {
+  if (Array.isArray(input)) {
+    return input.map(convertKeysToSnakeCase) as unknown as T;
+  }
+
+  if (input && typeof input === 'object' && !(input instanceof Date)) {
+    return Object.keys(input as Record<string, unknown>).reduce((acc, key) => {
+      const value = (input as Record<string, unknown>)[key];
+      acc[toSnakeCase(key)] = convertKeysToSnakeCase(value);
+      return acc;
+    }, {} as Record<string, unknown>) as T;
+  }
+
+  return input;
+}
+
+export function convertKeysToCamelCase<T>(input: T): T {
+  if (Array.isArray(input)) {
+    return input.map(convertKeysToCamelCase) as unknown as T;
+  }
+
+  if (input && typeof input === 'object' && !(input instanceof Date)) {
+    return Object.keys(input as Record<string, unknown>).reduce((acc, key) => {
+      const value = (input as Record<string, unknown>)[key];
+      acc[toCamelCase(key)] = convertKeysToCamelCase(value);
+      return acc;
+    }, {} as Record<string, unknown>) as T;
+  }
+
+  return input;
+}

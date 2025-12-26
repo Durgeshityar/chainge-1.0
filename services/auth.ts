@@ -102,6 +102,8 @@ export class AuthService {
         dateOfBirth: profile?.dateOfBirth,
       };
 
+      console.log('[AuthService] Creating profile with payload:', userInput);
+
       const user = await this.database.create('user', {
         ...userInput,
         id: authResult.user.id, // Use the same ID as auth user
@@ -112,7 +114,8 @@ export class AuthService {
         authUser: authResult.user,
         error: null,
       };
-    } catch {
+    } catch (error) {
+      console.error('[AuthService] Failed to create user profile row', error);
       // If profile creation fails, sign out to cleanup
       await this.auth.signOut();
 
@@ -121,7 +124,12 @@ export class AuthService {
         authUser: null,
         error: {
           code: 'profile_creation_failed',
-          message: 'Failed to create user profile',
+          message:
+            error instanceof Error
+              ? error.message
+              : typeof error === 'string'
+                ? error
+                : 'Failed to create user profile',
         },
       };
     }

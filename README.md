@@ -66,3 +66,17 @@ export EXPO_PUBLIC_BACKEND_PROVIDER="supabase" # or "mock"
 ```
 
 The Expo config already declares the `chainge` scheme; update it if you change the redirect URL. The Supabase auth, database, storage, and realtime adapters are now wired into the `AdapterProvider`, so setting `EXPO_PUBLIC_BACKEND_PROVIDER` to `supabase` (the default) will use your Supabase project. Set it to `mock` if you need the seeded in-memory backend for local development.
+
+## Supabase Schema Setup
+
+Follow these steps to ensure the Supabase backend has the tables our adapters expect:
+
+1. **Create the `public.users` table via migrations**
+   - Install the [Supabase CLI](https://supabase.com/docs/guides/cli) if you haven't already (`npm i -g supabase`).
+   - From the repo root, run `supabase link --project-ref <your-ref>` once so the CLI knows which project to target (requires a Supabase access token).
+   - Apply the migrations with `supabase migration up` (or `supabase db push --db-url <postgres-url>`). This runs [`supabase/migrations/20240905000000_create_users_table.sql`](supabase/migrations/20240905000000_create_users_table.sql), which mirrors the fields defined in `types/index.ts` so adapters and Prisma stay aligned.
+2. **(Optional) Point to a differently named table**
+   - If you already store profiles in another table (for example `profiles`), add `EXPO_PUBLIC_SUPABASE_TABLE_USER=profiles` to your `.env` or shell.
+   - Restart Expo after changing environment variables so `adapters/supabase/utils.ts` picks up the override.
+
+Once the table exists (or the override is configured), features like `useProfile` and onboarding signup will work against Supabase without additional code changes.
