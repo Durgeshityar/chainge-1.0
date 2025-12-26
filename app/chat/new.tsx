@@ -80,11 +80,12 @@ export default function NewChatScreen() {
     try {
       const chat = await chatService.getOrCreateDirectChat(user.id, selectedUser.id);
       router.replace({
-        pathname: `/chat/${chat.id}`,
-        params: { 
+        pathname: '/chat/[id]',
+        params: {
+          id: chat.id,
           name: selectedUser.name || selectedUser.username,
-          avatarUrl: selectedUser.avatarUrl || ''
-        }
+          avatarUrl: selectedUser.avatarUrl || '',
+        },
       });
     } catch (err) {
       console.error('Failed to create chat', err);
@@ -110,7 +111,10 @@ export default function NewChatScreen() {
       const participantIds = [user.id, ...selectedUsers.map(u => u.id)];
       const chat = await chatService.createGroupChat(participantIds, groupName.trim());
       setShowGroupNameModal(false);
-      router.replace(`/chat/${chat.id}`);
+      router.replace({
+        pathname: '/chat/[id]',
+        params: { id: chat.id },
+      });
     } catch (err) {
       console.error('Failed to create group chat', err);
     }

@@ -18,6 +18,7 @@ interface OnboardingLayoutProps {
   onSkip?: () => void;
   nextLabel?: string;
   nextDisabled?: boolean;
+  nextIsLoading?: boolean;
   showSkip?: boolean;
   showBack?: boolean;
   /** Set to false for screens with WheelPicker/FlatList to avoid nested virtualized list errors */
@@ -34,6 +35,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
   onSkip,
   nextLabel = 'Next',
   nextDisabled = false,
+  nextIsLoading = false,
   showSkip = true,
   showBack = true,
   scrollable = true,
@@ -104,6 +106,7 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
             <View style={styles.skipPlaceholder} />
           )}
 
+<<<<<<< HEAD
           {onNext && (
             <Button
               variant="primary"
@@ -116,6 +119,31 @@ export const OnboardingLayout: React.FC<OnboardingLayoutProps> = ({
           )}
         </View>
       </KeyboardAvoidingView>
+=======
+          <View style={styles.footer}>
+            {showSkip ? (
+              <TouchableOpacity onPress={onSkip} style={styles.skipButton}>
+                <Text style={styles.skipText}>Skip</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={styles.skipPlaceholder} />
+            )}
+            
+            {onNext && (
+              <Button
+                variant="primary"
+                size="lg"
+                onPress={onNext}
+                disabled={nextDisabled || nextIsLoading}
+                isLoading={nextIsLoading}
+                style={styles.nextButton}
+                title={nextLabel}
+              />
+            )}
+          </View>
+        </KeyboardAvoidingView>
+      </TouchableWithoutFeedback>
+>>>>>>> abhijay/dev
     </SafeAreaView>
   );
 };
