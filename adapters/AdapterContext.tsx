@@ -12,6 +12,10 @@ import { MockAuthAdapter } from './mock/authAdapter';
 import { MockDatabaseAdapter } from './mock/databaseAdapter';
 import { MockRealtimeAdapter } from './mock/realtimeAdapter';
 import { MockStorageAdapter } from './mock/storageAdapter';
+import { SupabaseAuthAdapter } from './supabase/authAdapter';
+import { SupabaseDatabaseAdapter } from './supabase/databaseAdapter';
+import { SupabaseRealtimeAdapter } from './supabase/realtimeAdapter';
+import { SupabaseStorageAdapter } from './supabase/storageAdapter';
 import type {
   Adapters,
   IAuthAdapter,
@@ -97,11 +101,15 @@ export function createMockAdapters(config: AdapterConfig = {}): Adapters {
 }
 
 /**
- * Create Supabase adapters (to be implemented in Phase 16)
+ * Create Supabase adapters.
  */
 export function createSupabaseAdapters(_config: AdapterConfig = {}): Adapters {
-  // TODO: Implement in Phase 16
-  throw new Error('Supabase adapters not yet implemented. Use mock adapters for development.');
+  return {
+    auth: new SupabaseAuthAdapter(),
+    database: new SupabaseDatabaseAdapter(),
+    storage: new SupabaseStorageAdapter(),
+    realtime: new SupabaseRealtimeAdapter(),
+  };
 }
 
 /**

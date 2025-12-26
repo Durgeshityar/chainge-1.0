@@ -1,5 +1,5 @@
 import { useAdapters } from '@/hooks/useAdapter';
-import { createAuthService, type SignInData, type SignUpData } from '@/services/auth';
+import { createAuthService, type AuthServiceResult, type SignInData, type SignUpData } from '@/services/auth';
 import { selectIsAuthenticated, selectIsAuthReady, useAuthStore } from '@/stores/authStore';
 import { useEffect, useMemo } from 'react';
 
@@ -72,7 +72,7 @@ export function useAuth() {
     }
   };
 
-  const signUp = async (data: SignUpData) => {
+  const signUp = async (data: SignUpData): Promise<AuthServiceResult | null> => {
     setLoading(true);
     setError(null);
     try {
@@ -83,9 +83,11 @@ export function useAuth() {
         setAuthUser(result.authUser);
         setProfile(result.user);
       }
+      return result;
     } catch (err) {
       console.error('Sign up error:', err);
       setError({ code: 'unknown', message: 'An unexpected error occurred' });
+      return null;
     } finally {
       setLoading(false);
     }

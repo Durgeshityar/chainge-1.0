@@ -1,4 +1,4 @@
-import { AdapterProvider } from '@/adapters/AdapterContext';
+import { AdapterProvider, type BackendProvider } from '@/adapters/AdapterContext';
 import { useAdapters, useAuthAdapter } from '@/hooks/useAdapter';
 import { useAuthStore } from '@/stores/authStore';
 import { colors } from '@/theme/colors';
@@ -20,7 +20,7 @@ import { seedMessagingData } from '@/utils/seedMessaging';
  * Subscribes to auth state changes and updates the auth store.
  * This component should be rendered inside the AdapterProvider.
  */
-function AuthStateObserver({ children }: { children: React.ReactNode }) {
+function AuthStateObserver({ children, shouldSeedMockData }: { children: React.ReactNode; shouldSeedMockData: boolean }) {
   const authAdapter = useAuthAdapter();
   const dbAdapter = useAdapters().database; // Get DB adapter to seed
   const setAuthUser = useAuthStore((state) => state.setAuthUser);
@@ -28,8 +28,9 @@ function AuthStateObserver({ children }: { children: React.ReactNode }) {
   const isInitialized = useAuthStore((state) => state.isInitialized);
 
   useEffect(() => {
-    // Seed data on mount
-    seedMessagingData(dbAdapter);
+    if (shouldSeedMockData) {
+      void seedMessagingData(dbAdapter);
+    }
 
     // Subscribe to auth state changes
     const unsubscribe = authAdapter.onAuthStateChange((user) => {
@@ -43,7 +44,7 @@ function AuthStateObserver({ children }: { children: React.ReactNode }) {
     return () => {
       unsubscribe();
     };
-  }, [authAdapter, setAuthUser, initialize, isInitialized]);
+  }, [authAdapter, dbAdapter, setAuthUser, initialize, isInitialized, shouldSeedMockData]);
 
   // Show loading while auth is initializing
   if (!isInitialized) {
@@ -82,12 +83,15 @@ export default function RootLayout() {
 
   // Memoize adapter config to avoid recreating adapters every render (prevents update loops)
   const adapterConfig = useMemo(() => ({ delay: 200, persist: true }), []);
+  const backendProvider: BackendProvider =
+    ((process.env.EXPO_PUBLIC_BACKEND_PROVIDER as BackendProvider) ?? 'supabase');
+  const shouldSeedMockData = backendProvider === 'mock';
 
   return (
     <GestureHandlerRootView style={styles.container}>
       <PortalProvider>
-        <AdapterProvider provider="mock" config={adapterConfig}>
-          <AuthStateObserver>
+        <AdapterProvider provider={backendProvider} config={adapterConfig}>
+          <AuthStateObserver shouldSeedMockData={shouldSeedMockData}>
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="(tabs)" />
               <Stack.Screen name="(auth)" />

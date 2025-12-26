@@ -1,13 +1,14 @@
 import { DEFAULT_AVATAR_URL, DEFAULT_COVER_URL } from '@/lib/constants';
 import type {
-    Activity,
-    Chat,
-    ChatParticipant,
-    Message,
-    Post,
-    PostComment,
-    PostLike,
-    User,
+  Activity,
+  Chat,
+  ChatParticipant,
+  Message,
+  Notification,
+  Post,
+  PostComment,
+  PostLike,
+  User,
 } from '@/types';
 import { ActivityStatus, ChatType, NotificationType, Visibility } from '@/types';
 

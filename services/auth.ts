@@ -14,11 +14,14 @@ import type {
 } from '@/adapters/types';
 import type { User, UserCreateInput } from '@/types';
 
+export type SignUpProfileInput = Partial<Omit<UserCreateInput, 'email' | 'username'>>;
+
 export interface SignUpData {
   email: string;
   password: string;
   username: string;
   displayName?: string;
+  profile?: SignUpProfileInput;
 }
 
 export interface SignInData {
@@ -45,11 +48,12 @@ export class AuthService {
    * Creates both an auth user and a user profile
    */
   async signUp(data: SignUpData): Promise<AuthServiceResult> {
-    const { email, password, username, displayName } = data;
+    const { email, password, username, displayName, profile } = data;
+    const normalizedUsername = username.trim().toLowerCase();
 
     // First, check if username is available
     const existingUsers = await this.database.query('user', [
-      { field: 'username', operator: 'eq', value: username.toLowerCase() },
+      { field: 'username', operator: 'eq', value: normalizedUsername },
     ]);
 
     if (existingUsers.length > 0) {
@@ -77,16 +81,28 @@ export class AuthService {
     // Create user profile
     try {
       const userInput: UserCreateInput = {
-        email: email.toLowerCase(),
-        username: username.toLowerCase(),
-        name: displayName ?? username, // Initialize required name
-        displayName: displayName ?? null,
-        bio: null,
-        avatarUrl: null,
-        interests: [],
-        latitude: null,
-        longitude: null,
+        email: email.trim().toLowerCase(),
+        username: normalizedUsername,
+        name: profile?.name ?? displayName ?? normalizedUsername,
+        displayName: profile?.displayName ?? displayName ?? null,
+        bio: profile?.bio ?? null,
+        avatarUrl: profile?.avatarUrl ?? null,
+        interests: profile?.interests ?? [],
+        latitude: profile?.latitude ?? null,
+        longitude: profile?.longitude ?? null,
+        followerCount: profile?.followerCount ?? 0,
+        followingCount: profile?.followingCount ?? 0,
+        coverImage: profile?.coverImage,
+        gender: profile?.gender,
+        height: profile?.height,
+        weight: profile?.weight,
+        age: profile?.age,
+        location: profile?.location,
+        activityTracker: profile?.activityTracker,
+        dateOfBirth: profile?.dateOfBirth,
       };
+
+      console.log('[AuthService] Creating profile with payload:', userInput);
 
       const user = await this.database.create('user', {
         ...userInput,
@@ -98,7 +114,8 @@ export class AuthService {
         authUser: authResult.user,
         error: null,
       };
-    } catch {
+    } catch (error) {
+      console.error('[AuthService] Failed to create user profile row', error);
       // If profile creation fails, sign out to cleanup
       await this.auth.signOut();
 
@@ -107,7 +124,12 @@ export class AuthService {
         authUser: null,
         error: {
           code: 'profile_creation_failed',
-          message: 'Failed to create user profile',
+          message:
+            error instanceof Error
+              ? error.message
+              : typeof error === 'string'
+                ? error
+                : 'Failed to create user profile',
         },
       };
     }
@@ -131,20 +153,24 @@ export class AuthService {
     }
 
     // Fetch user profile
-    const user = await this.database.get('user', authResult.user.id);
+    let user = await this.database.get('user', authResult.user.id);
 
     if (!user) {
-      // User profile doesn't exist, sign out
-      await this.auth.signOut();
+      try {
+        user = await this.createProfileFromAuthUser(authResult.user);
+      } catch (error) {
+        console.error('Failed to create profile for auth user', error);
+        await this.auth.signOut();
 
-      return {
-        user: null,
-        authUser: null,
-        error: {
-          code: 'profile_not_found',
-          message: 'User profile not found',
-        },
-      };
+        return {
+          user: null,
+          authUser: null,
+          error: {
+            code: 'profile_not_found',
+            message: 'User profile not found',
+          },
+        };
+      }
     }
 
     return {
@@ -273,6 +299,59 @@ export class AuthService {
     if (!authUser) return null;
 
     return this.database.get('user', authUser.id);
+  }
+
+  /**
+   * Create a user profile for an auth-only user (e.g., Supabase signup without profile row)
+   */
+  private async createProfileFromAuthUser(authUser: AuthUser): Promise<User> {
+    const baseUsername = authUser.email?.split('@')[0] ?? '';
+    const sanitizedBase = baseUsername.toLowerCase().replace(/[^a-z0-9_]/g, '');
+    const username = await this.generateUniqueUsername(sanitizedBase, authUser.id);
+
+    const userInput: UserCreateInput = {
+      email: authUser.email,
+      username,
+      name: username,
+      displayName: username,
+      bio: null,
+      avatarUrl: null,
+      interests: [],
+      latitude: null,
+      longitude: null,
+      followerCount: 0,
+      followingCount: 0,
+    };
+
+    return this.database.create('user', {
+      ...userInput,
+      id: authUser.id,
+    });
+  }
+
+  private async generateUniqueUsername(base: string, fallbackId: string): Promise<string> {
+    const normalizedBase = base || `user_${fallbackId.slice(0, 6)}`;
+    let candidate = normalizedBase;
+    let counter = 1;
+
+    while (await this.isUsernameTaken(candidate)) {
+      candidate = `${normalizedBase}${counter}`;
+      counter += 1;
+
+      if (counter > 50) {
+        candidate = `user_${fallbackId.slice(0, 8)}`;
+        break;
+      }
+    }
+
+    return candidate;
+  }
+
+  private async isUsernameTaken(username: string): Promise<boolean> {
+    const existing = await this.database.query('user', [
+      { field: 'username', operator: 'eq', value: username },
+    ]);
+    return existing.length > 0;
   }
 
   /**
