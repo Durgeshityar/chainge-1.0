@@ -34,20 +34,24 @@ export class ChatService {
    * Create a new chat
    */
   async createChat(creatorId: string, data: CreateChatData): Promise<Chat> {
+    console.log('[ChatService] createChat start', { creatorId, data });
     // Create the chat
     const chat = await this.database.create('chat', {
       type: data.type,
       name: data.name ?? null,
       lastMessageId: null,
     });
+    console.log('[ChatService] chat row created', chat);
 
     // Add creator as participant
+    console.log('[ChatService] adding creator participant', { chatId: chat.id, creatorId });
     await this.database.create('chatParticipant', {
       chatId: chat.id,
       userId: creatorId,
     });
 
     // Add other participants
+    console.log('[ChatService] adding other participants', data.participantIds);
     await Promise.all(
       data.participantIds
         .filter((id) => id !== creatorId)
@@ -59,6 +63,7 @@ export class ChatService {
         ),
     );
 
+    console.log('[ChatService] createChat complete', chat.id);
     return chat;
   }
 
@@ -66,6 +71,7 @@ export class ChatService {
    * Create or get a direct message chat between two users
    */
   async getOrCreateDirectChat(userId1: string, userId2: string): Promise<Chat> {
+    console.log('[ChatService] getOrCreateDirectChat', { userId1, userId2 });
     // Find existing DM between these users
     const user1Chats = await this.database.query('chatParticipant', [
       { field: 'userId', operator: 'eq', value: userId1 },
@@ -82,10 +88,12 @@ export class ChatService {
       ]);
 
       if (otherParticipants.length > 0) {
+        console.log('[ChatService] reusing existing DM chat', participant.chatId);
         return chat;
       }
     }
 
+    console.log('[ChatService] creating new DM chat');
     // No existing DM found, create one
     return this.createChat(userId1, {
       type: ChatType.DIRECT,
@@ -102,6 +110,7 @@ export class ChatService {
     }
 
     const creatorId = participantIds[0];
+    console.log('[ChatService] createGroupChat', { participantIds, name });
     return this.createChat(creatorId, {
       type: ChatType.GROUP,
       name,

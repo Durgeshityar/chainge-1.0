@@ -141,6 +141,7 @@ export class SupabaseDatabaseAdapter implements IDatabaseAdapter {
     data: Partial<ModelTypeMap[M]>,
   ): Promise<ModelTypeMap[M]> {
     const table = getTableName(model);
+    console.log('[SupabaseDB] create start', { model, table, data });
     const { data: result, error } = await this.supabase
       .from(table)
       .insert(convertKeysToSnakeCase(data))
@@ -148,9 +149,11 @@ export class SupabaseDatabaseAdapter implements IDatabaseAdapter {
       .single();
 
     if (error) {
+      console.error('[SupabaseDB] create failed', { model, table, error });
       throw error;
     }
 
+    console.log('[SupabaseDB] create success', { model, table, result });
     return hydrateDates(convertKeysToCamelCase(result)) as ModelTypeMap[M];
   }
 
