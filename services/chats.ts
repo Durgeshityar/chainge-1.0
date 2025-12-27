@@ -31,45 +31,6 @@ export class ChatService {
   constructor(private database: IDatabaseAdapter, private realtime: IRealtimeAdapter) {}
 
   /**
-   * Ensure a user has at least a couple of sample chats for preview in mock mode.
-   * If the seed users don't exist (real backend), this is a no-op.
-   */
-  async bootstrapSampleChats(userId: string): Promise<ChatWithDetails[]> {
-    const sampleUserIds = ['ava-user-id', 'liam-user-id'];
-
-    for (const sampleId of sampleUserIds) {
-      const sampleUser = await this.database.get('user', sampleId);
-      if (!sampleUser) continue; // Skip when running against a real backend
-
-      // Create or reuse a direct chat with the sample user
-      const chat = await this.getOrCreateDirectChat(userId, sampleId);
-
-      // Seed a welcome message if the chat is empty
-      const existingMessages = await this.database.list('message', {
-        where: [{ field: 'chatId', operator: 'eq', value: chat.id }],
-        orderBy: [{ field: 'createdAt', direction: 'desc' }],
-        limit: 1,
-      });
-
-      if (existingMessages.length === 0) {
-        const welcome = await this.database.create('message', {
-          chatId: chat.id,
-          senderId: sampleId,
-          content: 'Hey, welcome to Chainge! This is a preview chat.',
-          mediaUrls: undefined,
-        });
-
-        await this.database.update('chat', chat.id, {
-          lastMessageId: welcome.id,
-          updatedAt: new Date(),
-        });
-      }
-    }
-
-    return this.getUserChats(userId);
-  }
-
-  /**
    * Create a new chat
    */
   async createChat(creatorId: string, data: CreateChatData): Promise<Chat> {

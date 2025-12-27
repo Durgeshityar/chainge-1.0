@@ -29,11 +29,6 @@ export function useChat() {
     try {
       let userChats = await chatService.getUserChats(userId);
 
-      // For fresh/mock users with no chats, seed sample previews
-      if (userChats.length === 0) {
-        userChats = await chatService.bootstrapSampleChats(userId);
-      }
-
       setChats(userChats);
 
       const count = await chatService.getUnreadCount(userId);

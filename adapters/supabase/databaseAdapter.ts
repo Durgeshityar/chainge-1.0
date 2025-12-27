@@ -60,9 +60,13 @@ function applyFilters(query: any, filters?: Filter[]): any {
   }, query);
 }
 
-function applyOrder(query: any, orderBy?: OrderBy[]): any {
+const MODELS_WITHOUT_CREATED_AT: ModelName[] = ['chatParticipant'];
+
+function applyOrder(model: ModelName, query: any, orderBy?: OrderBy[]): any {
   if (!orderBy || orderBy.length === 0) {
-    return query.order('created_at', { ascending: false });
+    return MODELS_WITHOUT_CREATED_AT.includes(model)
+      ? query
+      : query.order('created_at', { ascending: false });
   }
 
   return orderBy.reduce(
@@ -95,7 +99,7 @@ export class SupabaseDatabaseAdapter implements IDatabaseAdapter {
     const table = getTableName(model);
     let query = this.supabase.from(table).select('*', { count: selectCount });
     query = applyFilters(query, options?.where);
-    query = applyOrder(query, options?.orderBy);
+    query = applyOrder(model, query, options?.orderBy);
 
     return query;
   }
