@@ -61,6 +61,7 @@ export default function NewChatScreen() {
   };
 
   const toggleUserSelection = (selectedUser: User) => {
+    console.log('[NewChat] toggleUserSelection', { selectedUser });
     setSelectedUsers(prev => {
       const isSelected = prev.some(u => u.id === selectedUser.id);
       if (isSelected) {
@@ -77,8 +78,10 @@ export default function NewChatScreen() {
   const handleUserSelect = async (selectedUser: User) => {
     if (!user) return;
 
+    console.log('[NewChat] handleUserSelect start', { currentUser: user.id, selectedUser: selectedUser.id });
     try {
       const chat = await chatService.getOrCreateDirectChat(user.id, selectedUser.id);
+      console.log('[NewChat] chat ready, navigating', { chatId: chat.id });
       router.replace({
         pathname: '/chat/[id]',
         params: {
@@ -95,6 +98,7 @@ export default function NewChatScreen() {
   const handleCreateGroup = async () => {
     if (!user || selectedUsers.length === 0) return;
 
+    console.log('[NewChat] handleCreateGroup', { currentUser: user.id, selectedIds: selectedUsers.map(u => u.id) });
     if (selectedUsers.length === 1) {
       // Single user - create direct chat
       handleUserSelect(selectedUsers[0]);
@@ -107,9 +111,11 @@ export default function NewChatScreen() {
   const confirmGroupCreation = async () => {
     if (!user || !groupName.trim()) return;
 
+    console.log('[NewChat] confirmGroupCreation', { name: groupName, participantIds: selectedUsers.map(u => u.id) });
     try {
       const participantIds = [user.id, ...selectedUsers.map(u => u.id)];
       const chat = await chatService.createGroupChat(participantIds, groupName.trim());
+      console.log('[NewChat] group chat created', { chatId: chat.id });
       setShowGroupNameModal(false);
       router.replace({
         pathname: '/chat/[id]',

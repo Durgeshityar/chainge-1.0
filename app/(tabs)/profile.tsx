@@ -1,5 +1,5 @@
 import { LinearGradient } from 'expo-linear-gradient';
-import { useFocusEffect } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -34,6 +34,7 @@ export default function ProfileScreen() {
   const { fetchProfile, fetchPosts, isLoading: isProfileLoading, stats, user } = useProfile();
   const { authUser, isInitialized } = useAuthStore();
   const { signOut, isLoading: isAuthLoading } = useAuth();
+  const router = useRouter();
   const bottomSheetRef = useRef<BottomSheetRef>(null);
   const [activeTab, setActiveTab] = useState<'posts' | 'events'>('posts');
   
@@ -66,10 +67,15 @@ export default function ProfileScreen() {
     bottomSheetRef.current?.scrollTo(-500); // Adjust snap point as needed
   };
 
+  const handleLogout = async () => {
+    await signOut();
+    router.replace('/(auth)/welcome');
+  };
+
   const confirmStrictLogout = (): void => {
     Alert.alert('Sign out', 'This will end your current session immediately.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Sign out', style: 'destructive', onPress: () => void signOut() },
+      { text: 'Sign out', style: 'destructive', onPress: () => void handleLogout() },
     ]);
   };
 

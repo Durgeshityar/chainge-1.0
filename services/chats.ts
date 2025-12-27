@@ -31,62 +31,27 @@ export class ChatService {
   constructor(private database: IDatabaseAdapter, private realtime: IRealtimeAdapter) {}
 
   /**
-   * Ensure a user has at least a couple of sample chats for preview in mock mode.
-   * If the seed users don't exist (real backend), this is a no-op.
-   */
-  async bootstrapSampleChats(userId: string): Promise<ChatWithDetails[]> {
-    const sampleUserIds = ['ava-user-id', 'liam-user-id'];
-
-    for (const sampleId of sampleUserIds) {
-      const sampleUser = await this.database.get('user', sampleId);
-      if (!sampleUser) continue; // Skip when running against a real backend
-
-      // Create or reuse a direct chat with the sample user
-      const chat = await this.getOrCreateDirectChat(userId, sampleId);
-
-      // Seed a welcome message if the chat is empty
-      const existingMessages = await this.database.list('message', {
-        where: [{ field: 'chatId', operator: 'eq', value: chat.id }],
-        orderBy: [{ field: 'createdAt', direction: 'desc' }],
-        limit: 1,
-      });
-
-      if (existingMessages.length === 0) {
-        const welcome = await this.database.create('message', {
-          chatId: chat.id,
-          senderId: sampleId,
-          content: 'Hey, welcome to Chainge! This is a preview chat.',
-          mediaUrls: undefined,
-        });
-
-        await this.database.update('chat', chat.id, {
-          lastMessageId: welcome.id,
-          updatedAt: new Date(),
-        });
-      }
-    }
-
-    return this.getUserChats(userId);
-  }
-
-  /**
    * Create a new chat
    */
   async createChat(creatorId: string, data: CreateChatData): Promise<Chat> {
+    console.log('[ChatService] createChat start', { creatorId, data });
     // Create the chat
     const chat = await this.database.create('chat', {
       type: data.type,
       name: data.name ?? null,
       lastMessageId: null,
     });
+    console.log('[ChatService] chat row created', chat);
 
     // Add creator as participant
+    console.log('[ChatService] adding creator participant', { chatId: chat.id, creatorId });
     await this.database.create('chatParticipant', {
       chatId: chat.id,
       userId: creatorId,
     });
 
     // Add other participants
+    console.log('[ChatService] adding other participants', data.participantIds);
     await Promise.all(
       data.participantIds
         .filter((id) => id !== creatorId)
@@ -98,6 +63,7 @@ export class ChatService {
         ),
     );
 
+    console.log('[ChatService] createChat complete', chat.id);
     return chat;
   }
 
@@ -105,6 +71,7 @@ export class ChatService {
    * Create or get a direct message chat between two users
    */
   async getOrCreateDirectChat(userId1: string, userId2: string): Promise<Chat> {
+    console.log('[ChatService] getOrCreateDirectChat', { userId1, userId2 });
     // Find existing DM between these users
     const user1Chats = await this.database.query('chatParticipant', [
       { field: 'userId', operator: 'eq', value: userId1 },
@@ -121,10 +88,12 @@ export class ChatService {
       ]);
 
       if (otherParticipants.length > 0) {
+        console.log('[ChatService] reusing existing DM chat', participant.chatId);
         return chat;
       }
     }
 
+    console.log('[ChatService] creating new DM chat');
     // No existing DM found, create one
     return this.createChat(userId1, {
       type: ChatType.DIRECT,
@@ -141,6 +110,7 @@ export class ChatService {
     }
 
     const creatorId = participantIds[0];
+    console.log('[ChatService] createGroupChat', { participantIds, name });
     return this.createChat(creatorId, {
       type: ChatType.GROUP,
       name,

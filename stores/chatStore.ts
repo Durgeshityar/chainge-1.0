@@ -4,6 +4,7 @@ import { create } from 'zustand';
 interface ChatState {
   chats: ChatWithDetails[];
   activeChatMessages: MessageWithSender[];
+  activeChatId: string | null;
   unreadCount: number;
   isLoading: boolean;
   error: string | null;
@@ -11,6 +12,7 @@ interface ChatState {
   // Actions
   setChats: (chats: ChatWithDetails[]) => void;
   setActiveChatMessages: (messages: MessageWithSender[]) => void;
+  setActiveChatId: (chatId: string | null) => void;
   appendMessage: (message: MessageWithSender) => void;
   updateChat: (chatId: string, updates: Partial<ChatWithDetails>) => void;
   setUnreadCount: (count: number) => void;
@@ -21,16 +23,20 @@ interface ChatState {
 export const useChatStore = create<ChatState>((set) => ({
   chats: [],
   activeChatMessages: [],
+  activeChatId: null,
   unreadCount: 0,
   isLoading: false,
   error: null,
 
   setChats: (chats) => set({ chats }),
   setActiveChatMessages: (messages) => set({ activeChatMessages: messages }),
+  setActiveChatId: (chatId) => set({ activeChatId: chatId }),
   
   appendMessage: (message) => 
     set((state) => ({
-      activeChatMessages: [message, ...state.activeChatMessages], // Assumes inverted list for UI
+      activeChatMessages: state.activeChatMessages.some((existing) => existing.id === message.id)
+        ? state.activeChatMessages
+        : [message, ...state.activeChatMessages], // Assumes inverted list for UI
     })),
 
   updateChat: (chatId, updates) =>

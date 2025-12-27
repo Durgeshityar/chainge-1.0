@@ -8,7 +8,7 @@ import type {
   RealtimeCallback,
 } from '@/adapters/types';
 import { getSupabaseClient } from './client';
-import { getTableName } from './utils';
+import { convertKeysToCamelCase, getTableName, hydrateDates, toSnakeCase } from './utils';
 import type {
   RealtimeChannel,
   RealtimePostgresChangesPayload,
@@ -100,6 +100,7 @@ export class SupabaseRealtimeAdapter implements IRealtimeAdapter {
     const tableName = getTableName(table);
     const channelName = `table:${tableName}:${Math.random().toString(36).slice(2)}`;
     const channel = this.supabase.channel(channelName);
+    const formattedFilter = formatRealtimeFilter(filter);
 
     channel.on(
       'postgres_changes',
@@ -107,14 +108,21 @@ export class SupabaseRealtimeAdapter implements IRealtimeAdapter {
         event: '*',
         schema: 'public',
         table: tableName,
-        filter: filter ?? undefined,
+        filter: formattedFilter,
       },
       (payload: RealtimePostgresChangesPayload<Record<string, unknown>>) => {
+        const newRecord = payload.new
+          ? (hydrateDates(convertKeysToCamelCase(payload.new)) as ModelTypeMap[M])
+          : undefined;
+        const previousRecord = payload.old
+          ? (hydrateDates(convertKeysToCamelCase(payload.old)) as ModelTypeMap[M])
+          : undefined;
+
         const change: DatabaseChange<ModelTypeMap[M]> = {
           type: payload.eventType as DatabaseChange['type'],
           table,
-          record: payload.new as ModelTypeMap[M],
-          oldRecord: payload.old as ModelTypeMap[M] | undefined,
+          record: (newRecord ?? previousRecord) as ModelTypeMap[M],
+          oldRecord: previousRecord,
         };
         callback(change);
       },
@@ -165,4 +173,10 @@ function formatPresenceState(state: Record<string, unknown>): PresenceState[stri
     ...state,
     onlineAt,
   } as PresenceState[string];
+}
+
+function formatRealtimeFilter(filter: string | null): string | undefined {
+  if (!filter) return undefined;
+
+  return filter.replace(/([a-z0-9_]+)=/gi, (match, column) => `${toSnakeCase(column)}=`);
 }
