@@ -22,13 +22,25 @@ const DEFAULT_PAGE_SIZE = 20;
 
 type SelectCountOption = 'exact' | 'planned' | 'estimated';
 
+function normalizeFilterValue(value: unknown): unknown {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(normalizeFilterValue);
+  }
+
+  return value;
+}
+
 function applyFilters(query: any, filters?: Filter[]): any {
   if (!filters) {
     return query;
   }
 
   return filters.reduce((builder, filter) => {
-    const value = filter.value as any;
+    const value = normalizeFilterValue(filter.value) as any;
     const field = toSnakeCase(filter.field);
     switch (filter.operator) {
       case 'eq':

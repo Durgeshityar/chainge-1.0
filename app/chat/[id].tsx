@@ -36,6 +36,7 @@ export default function ChatDetailScreen() {
     activeChatMessages,
     fetchChatMessages,
     sendMessage,
+    clearActiveChat,
   } = useChat();
 
   const [sending, setSending] = useState(false);
@@ -53,7 +54,11 @@ export default function ChatDetailScreen() {
     if (id) {
       fetchChatMessages(id);
     }
-  }, [id, fetchChatMessages]);
+
+    return () => {
+      clearActiveChat();
+    };
+  }, [id, fetchChatMessages, clearActiveChat]);
 
   // Find chat metadata from list
   const chat = chats.find(c => c.id === id);
