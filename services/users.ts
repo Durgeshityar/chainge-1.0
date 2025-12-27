@@ -218,21 +218,21 @@ export class UserService {
    * Search users by username or display name
    */
   async searchUsers(query: string, limit: number = 20): Promise<User[]> {
-    // Search by username
-    const byUsername = await this.database.query('user', [
-      { field: 'username', operator: 'contains', value: query.toLowerCase() },
-    ]);
+    const term = query.trim();
+    if (!term) return [];
 
-    // Search by display name
-    const byDisplayName = await this.database.query('user', [
-      { field: 'displayName', operator: 'contains', value: query },
+    // Search in multiple text fields to cover all profile variations
+    const [byUsername, byName, byDisplayName] = await Promise.all([
+      this.database.query('user', [{ field: 'username', operator: 'contains', value: term.toLowerCase() }]),
+      this.database.query('user', [{ field: 'name', operator: 'contains', value: term }]),
+      this.database.query('user', [{ field: 'displayName', operator: 'contains', value: term }]),
     ]);
 
     // Merge and dedupe results
     const seen = new Set<string>();
     const results: User[] = [];
 
-    for (const user of [...byUsername, ...byDisplayName]) {
+    for (const user of [...byUsername, ...byName, ...byDisplayName]) {
       if (!seen.has(user.id)) {
         seen.add(user.id);
         results.push(user);

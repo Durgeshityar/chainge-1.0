@@ -81,6 +81,52 @@ export class SupabaseAuthAdapter implements IAuthAdapter {
     this.listeners.forEach((callback) => callback(this.currentUser));
   }
 
+  private isEmailNotConfirmedError(error?: SupabaseAuthError | null): boolean {
+    if (!error) {
+      return false;
+    }
+
+    const message = error.message?.toLowerCase?.() ?? '';
+    return error.code === 'email_not_confirmed' || message.includes('email not confirmed');
+  }
+
+  private async autoConfirmEmail(email: string, userId?: string): Promise<boolean> {
+    try {
+      let targetUserId = userId;
+
+      if (!targetUserId) {
+        const { data, error } = await this.supabase.auth.admin.generateLink({
+          type: 'magiclink',
+          email,
+          options: {
+            redirectTo: SUPABASE_REDIRECT,
+          },
+        });
+
+        if (error || !data?.user?.id) {
+          console.warn('[SupabaseAuthAdapter] Unable to locate user to auto-confirm email', error);
+          return false;
+        }
+
+        targetUserId = data.user.id;
+      }
+
+      const { error: confirmError } = await this.supabase.auth.admin.updateUserById(targetUserId, {
+        email_confirm: true,
+      });
+
+      if (confirmError) {
+        console.warn('[SupabaseAuthAdapter] Failed to auto-confirm email', confirmError);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.warn('[SupabaseAuthAdapter] Auto-confirm email threw an error', error);
+      return false;
+    }
+  }
+
   private mapUser(user: SupabaseUser): AuthUser {
     return {
       id: user.id,
@@ -219,12 +265,36 @@ export class SupabaseAuthAdapter implements IAuthAdapter {
         emailRedirectTo: SUPABASE_REDIRECT,
       },
     });
+    if (error) {
+      return this.toAuthResult({ session: null, user: null, error });
+    }
 
-    return this.toAuthResult({ session: data?.session ?? null, user: data?.user ?? null, error });
+    if (!data?.session && data?.user) {
+      const confirmed = await this.autoConfirmEmail(email, data.user.id);
+      if (confirmed) {
+        const retry = await this.supabase.auth.signInWithPassword({ email, password });
+        return this.toAuthResult({ session: retry.data?.session ?? null, user: retry.data?.user ?? data.user, error: retry.error });
+      }
+    }
+
+    return this.toAuthResult({ session: data?.session ?? null, user: data?.user ?? null, error: null });
   }
 
   async signInWithEmail(email: string, password: string): Promise<AuthResult> {
     const { data, error } = await this.supabase.auth.signInWithPassword({ email, password });
+
+    if (this.isEmailNotConfirmedError(error)) {
+      const confirmed = await this.autoConfirmEmail(email, data?.user?.id ?? undefined);
+      if (confirmed) {
+        const retry = await this.supabase.auth.signInWithPassword({ email, password });
+        return this.toAuthResult({
+          session: retry.data?.session ?? null,
+          user: retry.data?.user ?? data?.user ?? null,
+          error: retry.error,
+        });
+      }
+    }
+
     return this.toAuthResult({ session: data?.session ?? null, user: data?.user ?? null, error });
   }
 

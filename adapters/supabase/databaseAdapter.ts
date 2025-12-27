@@ -22,13 +22,25 @@ const DEFAULT_PAGE_SIZE = 20;
 
 type SelectCountOption = 'exact' | 'planned' | 'estimated';
 
+function normalizeFilterValue(value: unknown): unknown {
+  if (value instanceof Date) {
+    return value.toISOString();
+  }
+
+  if (Array.isArray(value)) {
+    return value.map(normalizeFilterValue);
+  }
+
+  return value;
+}
+
 function applyFilters(query: any, filters?: Filter[]): any {
   if (!filters) {
     return query;
   }
 
   return filters.reduce((builder, filter) => {
-    const value = filter.value as any;
+    const value = normalizeFilterValue(filter.value) as any;
     const field = toSnakeCase(filter.field);
     switch (filter.operator) {
       case 'eq':
@@ -60,9 +72,13 @@ function applyFilters(query: any, filters?: Filter[]): any {
   }, query);
 }
 
-function applyOrder(query: any, orderBy?: OrderBy[]): any {
+const MODELS_WITHOUT_CREATED_AT: ModelName[] = ['chatParticipant'];
+
+function applyOrder(model: ModelName, query: any, orderBy?: OrderBy[]): any {
   if (!orderBy || orderBy.length === 0) {
-    return query.order('created_at', { ascending: false });
+    return MODELS_WITHOUT_CREATED_AT.includes(model)
+      ? query
+      : query.order('created_at', { ascending: false });
   }
 
   return orderBy.reduce(
@@ -95,7 +111,7 @@ export class SupabaseDatabaseAdapter implements IDatabaseAdapter {
     const table = getTableName(model);
     let query = this.supabase.from(table).select('*', { count: selectCount });
     query = applyFilters(query, options?.where);
-    query = applyOrder(query, options?.orderBy);
+    query = applyOrder(model, query, options?.orderBy);
 
     return query;
   }
@@ -137,6 +153,7 @@ export class SupabaseDatabaseAdapter implements IDatabaseAdapter {
     data: Partial<ModelTypeMap[M]>,
   ): Promise<ModelTypeMap[M]> {
     const table = getTableName(model);
+    console.log('[SupabaseDB] create start', { model, table, data });
     const { data: result, error } = await this.supabase
       .from(table)
       .insert(convertKeysToSnakeCase(data))
@@ -144,9 +161,11 @@ export class SupabaseDatabaseAdapter implements IDatabaseAdapter {
       .single();
 
     if (error) {
+      console.error('[SupabaseDB] create failed', { model, table, error });
       throw error;
     }
 
+    console.log('[SupabaseDB] create success', { model, table, result });
     return hydrateDates(convertKeysToCamelCase(result)) as ModelTypeMap[M];
   }
 
@@ -233,7 +252,7 @@ export class SupabaseDatabaseAdapter implements IDatabaseAdapter {
       throw error;
     }
 
-    const hydrated = toDateHydratedRecords<M>(data as ModelTypeMap[M][] | null);
+    const hydrated = mapRecords<M>(data as ModelTypeMap[M][] | null);
     const nextOffset = offset + hydrated.length;
     const hasMore = count ? nextOffset < count : hydrated.length === limit;
 

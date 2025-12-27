@@ -1,5 +1,6 @@
 import { useAdapters } from '@/hooks/useAdapter';
 import { createChatService } from '@/services/chats';
+import { useAuthStore } from '@/stores/authStore';
 import { useChatStore } from '@/stores/chatStore';
 import { MessageWithSender } from '@/types';
 import { useCallback, useEffect, useMemo } from 'react';
@@ -12,11 +13,13 @@ export function useChat() {
   const {
     chats,
     activeChatMessages,
+    activeChatId,
     unreadCount,
     isLoading,
     error,
     setChats,
     setActiveChatMessages,
+    setActiveChatId,
     appendMessage,
     updateChat,
     setUnreadCount,
@@ -24,15 +27,12 @@ export function useChat() {
     setError,
   } = useChatStore();
 
+  const userId = useAuthStore((state) => state.profile?.id ?? state.authUser?.id ?? null);
+
   const fetchUserChats = useCallback(async (userId: string) => {
     setLoading(true);
     try {
       let userChats = await chatService.getUserChats(userId);
-
-      // For fresh/mock users with no chats, seed sample previews
-      if (userChats.length === 0) {
-        userChats = await chatService.bootstrapSampleChats(userId);
-      }
 
       setChats(userChats);
 
@@ -48,6 +48,7 @@ export function useChat() {
 
   const fetchChatMessages = useCallback(async (chatId: string) => {
     setLoading(true);
+    setActiveChatId(chatId);
     try {
       const { messages } = await chatService.getChatMessages(chatId);
       setActiveChatMessages(messages);
@@ -60,7 +61,7 @@ export function useChat() {
     } finally {
       setLoading(false);
     }
-  }, [chatService, setActiveChatMessages, setLoading, setError]);
+  }, [chatService, setActiveChatMessages, setActiveChatId, setLoading, setError]);
 
   const sendMessage = useCallback(async (
     chatId: string,
@@ -94,7 +95,6 @@ export function useChat() {
   const markAsRead = useCallback(async (chatId: string, userId: string) => {
     try {
       await chatService.markAsRead(chatId, userId);
-      // Update unread count locally or refetch
       const count = await chatService.getUnreadCount(userId);
       setUnreadCount(count);
     } catch (err) {
@@ -102,17 +102,37 @@ export function useChat() {
     }
   }, [chatService, setUnreadCount]);
 
-  // Subscribe to real-time messages
+  const clearActiveChat = useCallback(() => {
+    setActiveChatId(null);
+  }, [setActiveChatId]);
+
   useEffect(() => {
-    // Only subscribe if we have chats loaded (or just always if we have a user? Service method handles user check?)
-    // Actually service needs userId.
-    // We can't easily get userId here unless we pass it or get it from auth store which we didn't import here (we imported useChatStore).
-    // Let's import useAuth to get userId.
-  }, []);
+    if (!activeChatId) {
+      return;
+    }
+
+    const unsubscribe = chatService.subscribeToMessages(activeChatId, async (message) => {
+      const sender = await database.get('user', message.senderId);
+      const messageWithSender: MessageWithSender = { ...message, sender: sender ?? undefined };
+
+      appendMessage(messageWithSender);
+      updateChat(activeChatId, { updatedAt: message.createdAt });
+
+      if (userId && message.senderId !== userId) {
+        const count = await chatService.getUnreadCount(userId);
+        setUnreadCount(count);
+      }
+    });
+
+    return () => {
+      unsubscribe();
+    };
+  }, [activeChatId, chatService, database, appendMessage, updateChat, userId, setUnreadCount]);
 
   return {
     chats,
     activeChatMessages,
+    activeChatId,
     unreadCount,
     isLoading,
     error,
@@ -120,6 +140,7 @@ export function useChat() {
     fetchChatMessages,
     sendMessage,
     markAsRead,
+    clearActiveChat,
     chatService, // Expose service for custom needs
   };
 }

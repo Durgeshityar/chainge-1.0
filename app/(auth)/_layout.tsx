@@ -37,7 +37,7 @@ export default function AuthLayout() {
         }}
       />
       <Stack.Screen
-        name="forgot-password.tsx"
+        name="forgot-password"
         options={{
           title: 'Forgot Password',
         }}
