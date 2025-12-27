@@ -49,6 +49,7 @@ export class AuthService {
    */
   async signUp(data: SignUpData): Promise<AuthServiceResult> {
     const { email, password, username, displayName, profile } = data;
+    const normalizedEmail = email.trim().toLowerCase();
     const normalizedUsername = username.trim().toLowerCase();
 
     // First, check if username is available
@@ -68,7 +69,7 @@ export class AuthService {
     }
 
     // Create auth user
-    const authResult = await this.auth.signUpWithEmail(email, password);
+    const authResult = await this.auth.signUpWithEmail(normalizedEmail, password);
 
     if (authResult.error || !authResult.user) {
       return {
@@ -81,7 +82,7 @@ export class AuthService {
     // Create user profile
     try {
       const userInput: UserCreateInput = {
-        email: email.trim().toLowerCase(),
+        email: normalizedEmail,
         username: normalizedUsername,
         name: profile?.name ?? displayName ?? normalizedUsername,
         displayName: profile?.displayName ?? displayName ?? null,
@@ -141,8 +142,9 @@ export class AuthService {
    */
   async signIn(data: SignInData): Promise<AuthServiceResult> {
     const { email, password } = data;
+    const normalizedEmail = email.trim().toLowerCase();
 
-    const authResult = await this.auth.signInWithEmail(email, password);
+    const authResult = await this.auth.signInWithEmail(normalizedEmail, password);
 
     if (authResult.error || !authResult.user) {
       return {
@@ -281,7 +283,8 @@ export class AuthService {
    * Send password reset email
    */
   async resetPassword(email: string): Promise<{ error: AuthError | null }> {
-    return this.auth.resetPassword(email);
+    const normalizedEmail = email.trim().toLowerCase();
+    return this.auth.resetPassword(normalizedEmail);
   }
 
   /**
