@@ -240,7 +240,7 @@ export class SupabaseDatabaseAdapter implements IDatabaseAdapter {
       throw error;
     }
 
-    const hydrated = toDateHydratedRecords<M>(data as ModelTypeMap[M][] | null);
+    const hydrated = mapRecords<M>(data as ModelTypeMap[M][] | null);
     const nextOffset = offset + hydrated.length;
     const hasMore = count ? nextOffset < count : hydrated.length === limit;
 

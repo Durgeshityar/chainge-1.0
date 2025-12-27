@@ -30,6 +30,11 @@ const createSupabaseClient = (): SupabaseClient => {
       detectSessionInUrl: false,
       flowType: 'pkce',
     },
+    global: {
+      headers: {
+        'Accept-Timezone': 'UTC',
+      },
+    },
   });
 };
 
